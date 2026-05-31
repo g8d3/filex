@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Indice</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="up"><a href="{{parent}}">&larr; {{parent_label}}</a></div>
+    <h1>{{path}}</h1>
+    <table>
+      <thead>
+        <tr>
+          <th onclick="location.href='?sort=name&order={{name_order}}'">
+            Nombre<span class="s">{{name_icon}}</span>
+          </th>
+          <th onclick="location.href='?sort=size&order={{size_order}}'">
+            Tama&ntilde;o<span class="s">{{size_icon}}</span>
+          </th>
+          <th onclick="location.href='?sort=date&order={{date_order}}'">
+            Modificado<span class="s">{{date_icon}}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {{rows}}
+      </tbody>
+    </table>
+  </body>
+</html>

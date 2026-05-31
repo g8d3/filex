@@ -1,0 +1,136 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: sans-serif;
+  max-width: 900px;
+  margin: auto;
+  padding: 12px;
+  font-size: 14px;
+}
+h1,
+h2,
+h3 {
+  color: #333;
+}
+h1 {
+  font-size: 16px;
+  margin: 6px 0;
+}
+a {
+  color: #06c;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+li {
+  margin: 4px 0;
+}
+pre {
+  background: #f4f4f4;
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+code {
+  font-size: 13px;
+}
+/* Directory table */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 2px solid #ccc;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+th:hover {
+  background: #eee;
+}
+td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #e0e0e0;
+  white-space: nowrap;
+}
+td.name a {
+  display: block;
+  padding: 2px 0;
+  word-break: break-all;
+}
+td.size {
+  text-align: right;
+  color: #666;
+  font-size: 12px;
+  width: 70px;
+}
+td.date {
+  color: #888;
+  font-size: 12px;
+  width: 120px;
+}
+.dir {
+  font-weight: bold;
+}
+.up {
+  margin: 6px 0;
+  font-size: 13px;
+}
+/* Markdown tables */
+.md-content table {
+  display: block;
+  overflow-x: auto;
+  font-size: 13px;
+}
+.md-content td,
+.md-content th {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: left;
+  word-break: break-word;
+  white-space: normal;
+}
+.md-content img {
+  max-width: 100%;
+  height: auto;
+}
+.md-content p {
+  word-break: break-word;
+}
+/* Back link */
+.back-link {
+  float: right;
+  color: #888;
+}
+@media (max-width: 600px) {
+  body {
+    padding: 8px;
+    font-size: 15px;
+  }
+  h1 {
+    font-size: 15px;
+  }
+  th,
+  td {
+    padding: 2px 4px;
+    font-size: 12px;
+  }
+  td.date {
+    width: auto;
+    font-size: 11px;
+  }
+  td.size {
+    width: 50px;
+    font-size: 11px;
+  }
+  pre {
+    font-size: 12px;
+  }
+}
