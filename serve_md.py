@@ -7,8 +7,8 @@ import re
 import urllib.parse
 from datetime import datetime
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-TMPL_DIR = os.path.join(ROOT, "templates")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TMPL_DIR = os.path.join(SCRIPT_DIR, "templates")
 
 
 def load_tmpl(name):
@@ -176,15 +176,21 @@ def render_dir(path, full, sort, order):
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    root_dir = SCRIPT_DIR  # will be overridden after arg parse
+    real_root = SCRIPT_DIR
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         qs = urllib.parse.parse_qs(parsed.query)
         sort = qs.get("sort", ["name"])[0]
         order = qs.get("order", ["asc"])[0]
-        full = os.path.abspath(os.path.join(ROOT, path.lstrip("/")))
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
 
-        if not full.startswith(ROOT):
+        # Allow if real path is within root, OR if the unresolved path
+        # is within root (supports symlinks that point outside)
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
             self.send_error(403)
             return
 
@@ -236,11 +242,12 @@ if __name__ == "__main__":
     import sys
     import argparse
     parser = argparse.ArgumentParser(description="File server with Markdown rendering")
-    parser.add_argument("--root", default=ROOT, help=f"Root directory to serve")
+    parser.add_argument("--root", default=SCRIPT_DIR, help=f"Root directory to serve")
     parser.add_argument("--port", type=int, default=9090, help="Port to listen on")
     parser.add_argument("--bind", default="0.0.0.0", help="Address to bind")
     args = parser.parse_args()
-    ROOT = os.path.abspath(args.root)
-    print(f"Sirviendo {ROOT} en http://{args.bind}:{args.port}")
+    Handler.root_dir = os.path.abspath(args.root)
+    Handler.real_root = os.path.realpath(Handler.root_dir)
+    print(f"Sirviendo {Handler.root_dir} en http://{args.bind}:{args.port}")
     server = http.server.HTTPServer((args.bind, args.port), Handler)
     server.serve_forever()
