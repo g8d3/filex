@@ -197,19 +197,6 @@ def format_date(ts):
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 
-def find_default_file(dir_path):
-    preferred = ["README.md", "readme.md", "index.md", "index.html"]
-    for name in preferred:
-        fp = os.path.join(dir_path, name)
-        if os.path.isfile(fp):
-            return name
-    for name in sorted(os.listdir(dir_path)):
-        fp = os.path.join(dir_path, name)
-        if os.path.isfile(fp):
-            ext = os.path.splitext(name)[1].lower()
-            if ext in TEXT_EXTENSIONS or ext == ".md":
-                return name
-    return None
 
 
 def list_dir(full, sort, order):
@@ -239,44 +226,8 @@ def list_dir(full, sort, order):
     return entries
 
 
-def render_dir(path, full, sort, order):
-    entries = list_dir(full, sort, order)
 
-    def icon(s):
-        return (
-            " &#9660;"
-            if s == sort and order == "desc"
-            else " &#9650;" if s == sort else ""
-        )
 
-    def nxt(s):
-        return "desc" if s == sort and order == "asc" else "asc"
-
-    rows = ""
-    for e in entries:
-        link = (path + "/" + e["name"]).replace("//", "/")
-        if e["is_dir"]:
-            link += "/"
-            rows += f'<tr><td class="name dir"><a href="{link}">{e["name"]}/</a></td>'
-        else:
-            rows += f'<tr><td class="name"><a href="{link}">{e["name"]}</a></td>'
-        rows += f'<td class="size">{format_size(e["size"]) if not e["is_dir"] else ""}</td>'
-        rows += f'<td class="date">{format_date(e["date"])}</td></tr>'
-
-    table = '<table><thead><tr>' \
-        + f'<th onclick="location.href=\'?sort=name&order={nxt("name")}\'">Nombre<span class="s">{icon("name")}</span></th>' \
-        + f'<th onclick="location.href=\'?sort=size&order={nxt("size")}\'">Tama\u00f1o<span class="s">{icon("size")}</span></th>' \
-        + f'<th onclick="location.href=\'?sort=date&order={nxt("date")}\'">Modificado<span class="s">{icon("date")}</span></th>' \
-        + '</tr></thead><tbody>' + rows + '</tbody></table>'
-
-    bc = breadcrumb_html(path)
-    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
-    title = os.path.basename(path.rstrip("/")) if path != "/" else "Indice"
-
-    return DIR_TMPL\
-        .replace("{{title}}", title)\
-        .replace("{{toolbar_html}}", toolbar)\
-        .replace("{{table_html}}", table)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -346,19 +297,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     self.send_error(500, str(e))
                 return
-            # Try redirect to a default file rather than showing directory listing
-            default = find_default_file(full)
-            if default:
-                redirect = path.rstrip("/") + "/" + default
-                self.send_response(302)
-                self.send_header("Location", redirect)
-                self.end_headers()
-                return
-            # No files found: show minimal page with toolbar
+            # Viewing a directory: just show toolbar with empty content
             bc = breadcrumb_html(path.rstrip("/") or "/")
             toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
             title = os.path.basename(path.rstrip("/")) if path != "/" else ROOT_NAME
-            fallback = (
+            page = (
                 '<!doctype html><html lang="es"><head>'
                 '<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />'
                 f'<title>{title}</title>'
@@ -367,13 +310,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 '</head><body>'
                 + toolbar +
                 '<p style="margin:24px;color:#999;font-size:14px">'
-                '📂 No hay archivos en este directorio. Usa el breadcrumb para navegar.</p>'
+                '📂 Navega por los directorios desde el breadcrumb.</p>'
                 '</body></html>'
             )
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(fallback.encode("utf-8"))
+            self.wfile.write(page.encode("utf-8"))
             return
 
         ext = os.path.splitext(full)[1].lower()
