@@ -197,6 +197,21 @@ def format_date(ts):
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
 
+def find_default_file(dir_path):
+    preferred = ["README.md", "readme.md", "index.md", "index.html"]
+    for name in preferred:
+        fp = os.path.join(dir_path, name)
+        if os.path.isfile(fp):
+            return name
+    for name in sorted(os.listdir(dir_path)):
+        fp = os.path.join(dir_path, name)
+        if os.path.isfile(fp):
+            ext = os.path.splitext(name)[1].lower()
+            if ext in TEXT_EXTENSIONS or ext == ".md":
+                return name
+    return None
+
+
 def list_dir(full, sort, order):
     entries = []
     for name in os.listdir(full):
@@ -331,11 +346,34 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     self.send_error(500, str(e))
                 return
-            html = render_dir(path.rstrip("/") or "/", full, sort, order)
+            # Try redirect to a default file rather than showing directory listing
+            default = find_default_file(full)
+            if default:
+                redirect = path.rstrip("/") + "/" + default
+                self.send_response(302)
+                self.send_header("Location", redirect)
+                self.end_headers()
+                return
+            # No files found: show minimal page with toolbar
+            bc = breadcrumb_html(path.rstrip("/") or "/")
+            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+            title = os.path.basename(path.rstrip("/")) if path != "/" else ROOT_NAME
+            fallback = (
+                '<!doctype html><html lang="es"><head>'
+                '<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />'
+                f'<title>{title}</title>'
+                '<link rel="stylesheet" href="/static/style.css" />'
+                '<script src="/static/filex.js"></script>'
+                '</head><body>'
+                + toolbar +
+                '<p style="margin:24px;color:#999;font-size:14px">'
+                '📂 No hay archivos en este directorio. Usa el breadcrumb para navegar.</p>'
+                '</body></html>'
+            )
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(html.encode("utf-8"))
+            self.wfile.write(fallback.encode("utf-8"))
             return
 
         ext = os.path.splitext(full)[1].lower()
