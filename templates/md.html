@@ -1,13 +1,70 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{title}}</title>
-    <link rel="stylesheet" href="/static/style.css" />
-  </head>
-  <body>
-    <a href="{{parent_path}}" class="back-link">&larr; Volver</a>
-    <div class="md-content">{{content}}</div>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+  <script src="/static/filex.js"></script>
+  <style>
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .toolbar-sep { color: #ddd; margin: 0 2px; }
+    #prefsPanel { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px 12px; margin-top: 6px; font-size: 13px; }
+    #prefsPanel label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+    #prefsPanel input[type="range"] { width: 70px; vertical-align: middle; }
+    .md-content { font-size: var(--content-font-size, 14px); }
+    .md-content table { font-size: var(--content-font-size, 13px); }
+  </style>
+</head>
+<body>
+  {{toolbar_html}}
+
+  <div id="viewer" class="md-content"></div>
+
+  <div id="editor" style="display:none">
+    <textarea id="mdContent"
+      style="width:100%;min-height:400px;font-family:monospace;font-size:13px;padding:10px;border:1px solid #ccc;border-radius:4px;resize:vertical;background:#fafafa"
+    ></textarea>
+  </div>
+
+  <script>
+    const CONTENT = {{json_content}};
+
+    document.getElementById('viewer').innerHTML = marked.parse(CONTENT);
+    document.getElementById('mdContent').value = CONTENT;
+
+    function toggleEdit() {
+      var editing = document.getElementById('editor').style.display !== 'none';
+      document.getElementById('viewer').style.display = editing ? 'block' : 'none';
+      document.getElementById('editor').style.display = editing ? 'none' : 'block';
+      document.getElementById('editBtn').style.display = editing ? '' : 'none';
+      document.getElementById('saveBtn').style.display = editing ? 'none' : '';
+      document.getElementById('cancelBtn').style.display = editing ? 'none' : '';
+    }
+
+    async function saveFile() {
+      var content = document.getElementById('mdContent').value;
+      var btn = document.getElementById('saveBtn'), msg = document.getElementById('saveMsg');
+      btn.disabled = true; msg.textContent = 'Guardando…';
+      try {
+        var resp = await fetch(window.location.pathname, {
+          method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'content=' + encodeURIComponent(content)
+        });
+        if (resp.ok) { msg.textContent = '✓ Guardado — recargando…'; setTimeout(function() { location.reload(); }, 600); }
+        else { msg.textContent = '✗ Error: ' + await resp.text(); btn.disabled = false; }
+      } catch(e) { msg.textContent = '✗ Error de red'; btn.disabled = false; }
+    }
+  </script>
+</body>
 </html>

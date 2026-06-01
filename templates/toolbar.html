@@ -1,0 +1,46 @@
+  <div class="sticky-header">
+    <div class="breadcrumb" style="font-size:14px;margin-bottom:4px">{{breadcrumb}}</div>
+    <div class="toolbar">
+      <span style="flex:1"></span>
+      <button onclick="changeFontSize(-1)" class="tb-btn" title="Reducir fuente">A−</button>
+      <button onclick="changeFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
+      <span id="fontSizeLabel" style="font-size:12px;color:#888;min-width:32px;text-align:center"></span>
+      <span class="toolbar-sep">|</span>
+      <button onclick="togglePrefs()" id="prefsBtn" class="tb-btn">⚙️</button>
+      <span class="toolbar-sep">|</span>
+      <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
+      <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
+      <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
+      <span id="saveMsg" style="font-size:13px;color:#888"></span>
+    </div>
+    <div id="prefsPanel" style="display:none">
+      <label>
+        <input type="checkbox" id="prefTableBorder" onchange="setPref('tableBorder', this.checked)">
+        Bordes tablas
+      </label>
+      <label>
+        Celdas: <input type="range" id="prefPadding" min="2" max="16" value="6" onchange="setPref('cellPad', parseInt(this.value))">
+        <span id="prefPaddingVal">6</span>px
+      </label>
+    </div>
+  </div>
+
+  <!-- Directory Modal -->
+  <div id="dirModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeDirModal()">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle"></span>
+        <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1">✖</button>
+      </div>
+      <div class="modal-body">
+        <table>
+          <thead><tr>
+            <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
+            <th onclick="sortModal('size')" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
+            <th onclick="sortModal('date')" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
+          </tr></thead>
+          <tbody id="modalRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>

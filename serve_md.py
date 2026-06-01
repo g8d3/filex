@@ -9,6 +9,8 @@ import json
 import urllib.parse
 from datetime import datetime
 
+ROOT_NAME = "/"
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TMPL_DIR = os.path.join(SCRIPT_DIR, "templates")
 
@@ -21,6 +23,7 @@ def load_tmpl(name):
 DIR_TMPL = load_tmpl("dir.html")
 MD_TMPL = load_tmpl("md.html")
 CODE_TMPL = load_tmpl("code.html")
+TOOLBAR_TMPL = load_tmpl("toolbar.html")
 
 
 # Extensiones de archivos de código/texto que se renderizan con el template code.html
@@ -76,129 +79,106 @@ LANG_MAP = {
     ".vim": "vim",
 }
 
+# Mapeo de lenguaje highlight.js a modo Ace editor
+ACE_MODE_MAP = {
+    "python": "python",
+    "bash": "sh",
+    "ruby": "ruby",
+    "go": "golang",
+    "rust": "rust",
+    "javascript": "javascript",
+    "typescript": "typescript",
+    "c": "c_cpp",
+    "cpp": "c_cpp",
+    "java": "java",
+    "kotlin": "kotlin",
+    "scala": "scala",
+    "swift": "swift",
+    "r": "r",
+    "objectivec": "c_cpp",
+    "yaml": "yaml",
+    "toml": "ini",
+    "json": "json",
+    "xml": "xml",
+    "sql": "sql",
+    "css": "css",
+    "scss": "scss",
+    "less": "less",
+    "php": "php",
+    "perl": "perl",
+    "lua": "lua",
+    "dart": "dart",
+    "lisp": "lisp",
+    "clojure": "clojure",
+    "haskell": "haskell",
+    "elixir": "elixir",
+    "erlang": "erlang",
+    "html": "html",
+    "dockerfile": "dockerfile",
+    "latex": "latex",
+    "vim": "text",
+    "ini": "ini",
+    "plaintext": "text",
+}
 
-def render_md(text, parent_path="/"):
-    lines = text.split("\n")
-    in_code = False
-    in_table = False
-    in_list = False
-    result = []
 
-    for line in lines:
-        if line.startswith("```"):
-            if in_code:
-                result.append("</code></pre>")
-                in_code = False
-            else:
-                result.append("<pre><code>")
-                in_code = True
-            continue
-        if in_code:
-            result.append(line)
-            continue
-
-        if line.startswith("# "):
-            result.append(f"<h1>{line[2:]}</h1>")
-        elif line.startswith("## "):
-            result.append(f"<h2>{line[3:]}</h2>")
-        elif line.startswith("### "):
-            result.append(f"<h3>{line[4:]}</h3>")
-        elif line.startswith("|"):
-            cells = [c.strip() for c in line.split("|")[1:-1]]
-            if all(re.match(r"^-+$", c) for c in cells):
-                continue
-            if not in_table:
-                result.append("<table><tr>")
-                in_table = True
-            else:
-                result.append("</tr><tr>")
-            for c in cells:
-                result.append(f"<td>{c}</td>")
-        else:
-            if in_table:
-                result.append("</tr></table>")
-                in_table = False
-            if line.startswith("- "):
-                if not in_list:
-                    result.append("<ul>")
-                    in_list = True
-                result.append(f"<li>{line[2:]}</li>")
-            else:
-                if in_list:
-                    result.append("</ul>")
-                    in_list = False
-                if line.strip():
-                    processed = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
-                    result.append(f"<p>{processed}</p>")
-                else:
-                    result.append("<br>")
-
-    if in_table:
-        result.append("</tr></table>")
-    if in_list:
-        result.append("</ul>")
-    if in_code:
-        result.append("</code></pre>")
-
-    body = "\n".join(result)
+def render_md(text, path, full):
     title = "Documento"
-    m = re.search(r"<h1>(.+?)</h1>", body)
+    m = re.search(r"^# (.+)", text, re.MULTILINE)
     if m:
         title = m.group(1)
-    return MD_TMPL.replace("{{title}}", title).replace("{{content}}", body).replace("{{parent_path}}", parent_path)
+    bc = breadcrumb_code(path, full)
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+    return MD_TMPL.replace("{{title}}", title)\
+        .replace("{{toolbar_html}}", toolbar)\
+        .replace("{{json_content}}", json.dumps(text))
 
 
 def breadcrumb_code(path, full):
-    """VS Code-style breadcrumb: dirs as links + file as select with siblings."""
+    """Breadcrumb with clickable segments that open a directory modal."""
     dir_path = os.path.dirname(path.rstrip("/")) or "/"
     current_file = os.path.basename(full) if os.path.isfile(full) else ""
     parent_full = os.path.dirname(full) if os.path.isfile(full) else full
 
     parts = dir_path.strip("/").split("/") if dir_path != "/" else []
     accum = ""
-    items = ['<a href="/" class="bc-link">/</a>']
+    items = [f'<span class="bc-link" data-dir="/">{ROOT_NAME}</span>']
     for part in parts:
         accum += "/" + part
-        items.append(f'<a href="{accum}/" class="bc-link">{part}</a>')
+        items.append(f'<span class="bc-link" data-dir="{accum}/">{part}</span>')
 
     sep = '<span class="bc-sep"> / </span>'
     bc = sep.join(items)
 
-    select_options = []
-    try:
-        for name in sorted(os.listdir(parent_full)):
-            fp = os.path.join(parent_full, name)
-            if os.path.isfile(fp):
-                selected = " selected" if name == current_file else ""
-                href = (dir_path + "/" + name) if dir_path != "/" else "/" + name
-                select_options.append(f'<option value="{href}"{selected}>{name}</option>')
-    except OSError:
-        pass
+    if current_file:
+        bc += sep + f'<span class="bc-current">{current_file}</span>'
 
-    select_html = '<select class="file-select" onchange="location.href=this.value">' + "".join(select_options) + "</select>"
-    return bc + sep + select_html
+    return bc
 
 
 def render_code(text, ext, path, full):
     lang = LANG_MAP.get(ext, "plaintext")
+    ace_lang = ACE_MODE_MAP.get(lang, "text")
     bc = breadcrumb_code(path, full)
-    return CODE_TMPL.replace("{{breadcrumb}}", bc)\
-        .replace("{{title}}", os.path.basename(full))\
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+    return CODE_TMPL.replace("{{title}}", os.path.basename(full))\
+        .replace("{{toolbar_html}}", toolbar)\
         .replace("{{language}}", lang)\
         .replace("{{json_content}}", json.dumps(text))\
-        .replace("{{json_language}}", json.dumps(lang))
+        .replace("{{json_language}}", json.dumps(lang))\
+        .replace("{{json_ace_lang}}", json.dumps(ace_lang))
 
 
 def breadcrumb_html(path):
     if path == "/":
-        return '<span class="bc-root">/</span>'
+        return f'<span class="bc-link" data-dir="/">{ROOT_NAME}</span>'
     parts = path.strip("/").split("/")
     accum = ""
-    items = ['<a href="/" class="bc-link">/</a>']
+    items = [f'<span class="bc-link" data-dir="/">{ROOT_NAME}</span>']
     for i, part in enumerate(parts):
         accum += "/" + part
         if i < len(parts) - 1:
-            items.append(f'<a href="{accum}/" class="bc-link">{part}</a>')
+            items.append(f'<span class="bc-link" data-dir="{accum}/">{part}</span>')
         else:
             items.append(f'<span class="bc-current">{part}</span>')
     sep = '<span class="bc-sep"> / </span>'
@@ -308,7 +288,54 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(403)
             return
 
+        # Servir archivos estáticos (JS, CSS, imágenes del propio filex)
+        if path.startswith("/static/"):
+            static_root = os.path.join(SCRIPT_DIR, "static")
+            rel = path[len("/static/"):]
+            safe = os.path.normpath(os.path.join(static_root, rel))
+            if not safe.startswith(os.path.normpath(static_root)):
+                self.send_error(403)
+                return
+            static_mime = {
+                ".css": "text/css; charset=utf-8",
+                ".js": "application/javascript; charset=utf-8",
+                ".png": "image/png",
+                ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+                ".svg": "image/svg+xml",
+                ".ico": "image/x-icon",
+            }
+            sext = os.path.splitext(safe)[1].lower()
+            try:
+                with open(safe, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", static_mime.get(sext, "application/octet-stream"))
+                self.end_headers()
+                self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "Static file not found")
+            return
+
         if os.path.isdir(full):
+            if qs.get("format", [None])[0] == "json":
+                try:
+                    entries = list_dir(full, sort, order)
+                    data = [{
+                        "name": e["name"],
+                        "is_dir": e["is_dir"],
+                        "size": e["size"],
+                        "size_fmt": format_size(e["size"]) if not e["is_dir"] else "",
+                        "date": format_date(e["date"]),
+                    } for e in entries]
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(data).encode("utf-8"))
+                except Exception as e:
+                    self.send_error(500, str(e))
+                return
             html = render_dir(path.rstrip("/") or "/", full, sort, order)
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
@@ -321,7 +348,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r") as f:
                     text = f.read()
-                html = render_md(text, os.path.dirname(path.rstrip("/")) or "/")
+                html = render_md(text, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
@@ -432,6 +459,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     Handler.root_dir = os.path.abspath(args.root)
     Handler.real_root = os.path.realpath(Handler.root_dir)
+    ROOT_NAME = os.path.basename(Handler.root_dir)
     print(f"Sirviendo {Handler.root_dir} en http://{args.bind}:{args.port}")
     server = http.server.HTTPServer((args.bind, args.port), Handler)
     server.serve_forever()

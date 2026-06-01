@@ -7,8 +7,10 @@
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9/ace.js"></script>
+  <script src="/static/filex.js"></script>
   <style>
-    .code-header {
+    .sticky-header {
       position: sticky;
       top: 0;
       z-index: 100;
@@ -17,84 +19,82 @@
       padding-bottom: 6px;
       margin-bottom: 8px;
     }
-    .file-select {
-      font-size: 13px;
-      padding: 2px 6px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      background: #fff;
-      color: #333;
-      cursor: pointer;
-      font-family: inherit;
-      max-width: 320px;
-    }
-    .file-select:hover {
-      border-color: #06c;
-    }
+    .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .toolbar-sep { color: #ddd; margin: 0 2px; }
+    #editor { min-height: 400px; height: 80vh; border: 1px solid #ccc; border-radius: 4px; }
+    pre code.hljs { font-size: var(--content-font-size, 13px); }
+    #prefsPanel { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 4px; padding: 8px 12px; margin-top: 6px; font-size: 13px; }
+    #prefsPanel label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+    #prefsPanel input[type="range"] { width: 70px; vertical-align: middle; }
   </style>
 </head>
 <body>
-  <div class="code-header">
-    <div class="breadcrumb" style="font-size:14px;margin-bottom:4px">{{breadcrumb}}</div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-      <span style="flex:1"></span>
-      <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
-      <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
-      <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
-      <span id="saveMsg" style="font-size:13px;color:#888"></span>
-    </div>
-  </div>
+  {{toolbar_html}}
 
   <div id="viewer">
     <pre><code id="codeBlock" class="{{language}}"></code></pre>
   </div>
 
-  <div id="editor" style="display:none">
-    <textarea id="codeContent"
-      style="width:100%;min-height:400px;font-family:monospace;font-size:13px;padding:10px;border:1px solid #ccc;border-radius:4px;resize:vertical;background:#fafafa"
-    ></textarea>
-  </div>
+  <div id="editor" style="display:none"></div>
 
   <script>
+    ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9/');
+
     const CONTENT = {{json_content}};
     const LANG = {{json_language}};
+    const ACE_LANG = {{json_ace_lang}};
 
     document.getElementById('codeBlock').textContent = CONTENT;
-    document.getElementById('codeContent').value = CONTENT;
     hljs.highlightElement(document.getElementById('codeBlock'));
 
+    var editor = null;
+
+    document.addEventListener('filex-fontchange', function(e) {
+      if (editor) editor.setFontSize(e.detail.size + 'px');
+    });
+
     function toggleEdit() {
-      const editing = document.getElementById('editor').style.display !== 'none';
-      document.getElementById('viewer').style.display = editing ? 'block' : 'none';
-      document.getElementById('editor').style.display = editing ? 'none' : 'block';
-      document.getElementById('editBtn').style.display = editing ? '' : 'none';
-      document.getElementById('saveBtn').style.display = editing ? 'none' : '';
-      document.getElementById('cancelBtn').style.display = editing ? 'none' : '';
+      if (editor) {
+        editor.destroy(); editor = null;
+        document.getElementById('viewer').style.display = 'block';
+        document.getElementById('editor').style.display = 'none';
+        document.getElementById('editBtn').style.display = '';
+        document.getElementById('saveBtn').style.display = 'none';
+        document.getElementById('cancelBtn').style.display = 'none';
+      } else {
+        document.getElementById('viewer').style.display = 'none';
+        document.getElementById('editor').style.display = 'block';
+        document.getElementById('editBtn').style.display = 'none';
+        document.getElementById('saveBtn').style.display = '';
+        document.getElementById('cancelBtn').style.display = '';
+        editor = ace.edit('editor');
+        editor.setTheme('ace/theme/github');
+        editor.session.setMode('ace/mode/' + ACE_LANG);
+        editor.setValue(CONTENT, -1);
+        editor.setOptions({
+          fontSize: getFontSize() + 'px', fontFamily: 'monospace',
+          wrap: true, showPrintMargin: false, tabSize: 2
+        });
+        editor.session.getSelection().clearSelection();
+        editor.commands.addCommand({
+          name: 'saveFile', bindKey: {win: 'Ctrl-S', mac: 'Cmd-S'}, exec: saveFile
+        });
+      }
     }
 
     async function saveFile() {
-      const content = document.getElementById('codeContent').value;
-      const btn = document.getElementById('saveBtn');
-      const msg = document.getElementById('saveMsg');
-      btn.disabled = true;
-      msg.textContent = 'Guardando…';
+      if (!editor) return;
+      var content = editor.getValue();
+      var btn = document.getElementById('saveBtn'), msg = document.getElementById('saveMsg');
+      btn.disabled = true; msg.textContent = 'Guardando…';
       try {
-        const resp = await fetch(window.location.pathname, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        var resp = await fetch(window.location.pathname, {
+          method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: 'content=' + encodeURIComponent(content)
         });
-        if (resp.ok) {
-          msg.textContent = '✓ Guardado — recargando…';
-          setTimeout(() => location.reload(), 600);
-        } else {
-          msg.textContent = '✗ Error: ' + await resp.text();
-          btn.disabled = false;
-        }
-      } catch (e) {
-        msg.textContent = '✗ Error de red';
-        btn.disabled = false;
-      }
+        if (resp.ok) { msg.textContent = '✓ Guardado — recargando…'; setTimeout(function() { location.reload(); }, 600); }
+        else { msg.textContent = '✗ Error: ' + await resp.text(); btn.disabled = false; }
+      } catch(e) { msg.textContent = '✗ Error de red'; btn.disabled = false; }
     }
   </script>
 </body>
