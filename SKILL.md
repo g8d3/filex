@@ -19,6 +19,7 @@ El proyecto completo vive en esta misma carpeta:
 ```
 ~/.agents/skills/filex/
 ├── SKILL.md
+├── filex.service        # Unit file de systemd (canónico)
 ├── serve_md.py          # Servidor HTTP
 ├── templates/
 │   ├── dir.html         # Template para listado de directorios
@@ -29,26 +30,17 @@ El proyecto completo vive en esta misma carpeta:
 
 ## Cómo ejecutar
 
+En producción se usa `uv run` (no hay python3 del sistema):
+
 ```bash
-python3 ~/.agents/skills/filex/serve_md.py --root /ruta/a/servir --port 9090
+# Producción (puerto 9090, root ~/code)
+uv run python3 ~/.agents/skills/filex/serve_md.py --root ~/code --port 9090 --bind 0.0.0.0
 ```
 
 Opciones:
 - `--root` — directorio raíz a servir (default: donde está `serve_md.py`)
 - `--port` — puerto (default: `9090`)
 - `--bind` — interfaz (default: `0.0.0.0`)
-
-## Systemd
-
-El servicio se llama `filex` y se gestiona con:
-
-```bash
-systemctl --user status filex
-systemctl --user restart filex
-systemctl --user stop filex
-```
-
-El unit file está trackeado en el repo `agents` en `roadmap/filex-service-example.service`.
 
 ## Arquitectura
 
@@ -61,6 +53,19 @@ El unit file está trackeado en el repo `agents` en `roadmap/filex-service-examp
 - **Templates**: usan `{{...}}` como placeholders (reemplazo string, sin motor de templates)
 
 - **Seguridad**: verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal)
+
+### Symlink para servir `~/.agents/`
+
+El root en producción es `~/code`, pero `~/.agents/` está fuera de esa carpeta. Para que filex pueda servir las skills en el navegador, existe un symlink:
+
+```
+~/code/.agents -> ~/.agents
+```
+
+Si recreas el root o eliminas el symlink, regenerar con:
+```bash
+ln -s ~/.agents ~/code/.agents
+```
 
 ## Systemd — Recargar tras cambios
 
