@@ -1,6 +1,6 @@
 ---
 name: filex
-description: "File server with Markdown rendering and VS Code-like code viewer. Sirve archivos con listado ordenable, renderizado .md, visor/editor de código con highlight.js para 40+ extensiones, breadcrumb sticky con select de archivos, y edición inline. Trigger: filex, file server, servir archivos, markdown server, code viewer, visor de código."
+description: "File server with Markdown rendering and VS Code-like code viewer. Sirve archivos con listado ordenable, renderizado .md, visor/editor de código con highlight.js, breadcrumb sticky con modal de navegación, edición inline vía Ace, y preferencias persistidas. Trigger: filex, file server, servir archivos, markdown server, code viewer, visor de código."
 ---
 
 # filex — File server with Markdown rendering
@@ -25,11 +25,12 @@ El proyecto completo vive en esta misma carpeta:
 ├── filex.service        # Unit file de systemd (canónico)
 ├── serve_md.py          # Servidor HTTP
 ├── templates/
-│   ├── dir.html         # Template para listado de directorios
-│   ├── md.html          # Template para markdown renderizado
-│   └── code.html        # Template para visor/editor de código con highlight.js
+│   ├── toolbar.html     # ⭐ Base compartida: header sticky, toolbar, prefs panel, modal
+│   ├── md.html          # Template para markdown con marked.js (usa {{toolbar_html}})
+│   └── code.html        # Template para código con highlight.js + Ace (usa {{toolbar_html}})
 └── static/
-    └── style.css        # Estilos
+    ├── style.css        # Estilos globales + modal + mobile
+    └── filex.js         # ⭐ JS compartido: fontSize, prefs, modal, breadcrumbs
 ```
 
 ## Cómo ejecutar
@@ -48,24 +49,73 @@ Opciones:
 
 ## Arquitectura
 
-- **`serve_md.py`** — servidor HTTP vía `http.server.SimpleHTTPRequestHandler`
-  - `render_md(text, parent_path)` — convierte markdown a HTML, inyecta `{{parent_path}}` para el botón Volver
-  - `render_dir(path, full, sort, order)` — genera listado con `breadcrumb_html()` y filas ordenables
-  - `render_code(text, ext, path, full)` — renderiza archivos de código en `code.html` con highlight.js
-  - `breadcrumb_code(path, full)` — breadcrumb tipo VS Code con `<select>` de archivos hermanos
-  - `breadcrumb_html(path)` — genera HTML de migas de pan con links por segmento
-  - `do_GET()` — rutea: directorio → `render_dir`, .md → `render_md`, code → `render_code`, imágenes → binario, resto → octet-stream
-  - `do_POST()` — guarda contenido editado de un archivo (recibe `content` vía form-urlencoded)
+### Base compartida (los 3 templates usan la misma base)
 
-- **TEXT_EXTENSIONS**: set con +40 extensiones de código/texto que se renderizan con `code.html`
+Todos los templates (`dir.html`, `md.html`, `code.html`) ahora usan:
+- **`{{toolbar_html}}`** — inyectado desde `templates/toolbar.html` (header sticky, breadcrumb clickeable, A−/A+, ⚙️ prefs, modal)
+- **`/static/filex.js`** — JS compartido: font size, preferencias localStorage, modal de directorios, clicks en breadcrumb
+- **`/static/style.css`** — estilos globales, modal, mobile
 
-- **LANG_MAP**: mapeo extensión → lenguaje highlight.js para syntax highlighting automático
+Esto elimina duplicación de HTML/JS entre templates. Cada template solo tiene su contenido específico (viewer + editor + toggleEdit/saveFile).
 
-- **Templates**: usan `{{...}}` como placeholders (reemplazo string, sin motor de templates)
+### `serve_md.py` — Servidor HTTP
 
-- **Seguridad**: verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal). `do_POST()` aplica la misma validación.
+- **`render_md(text, path, full)`** — pasa markdown crudo como JSON al template, `marked.js` lo renderiza en cliente
+- **`render_code(text, ext, path, full)`** — pasa contenido como JSON, highlight.js lo colorea, Ace editor permite editar
+- **`breadcrumb_code(path, full)`** — genera `<span>`s clickeables con `data-dir` para abrir el modal; el archivo actual es texto no clickeable (`.bc-current`)
+- **`breadcrumb_html(path)`** — igual que breadcrumb_code pero para directorios
+- **`do_GET()`** — rutea: directorio → toolbar + "navega desde breadcrumb", `.md` → `render_md`, code → `render_code`, `/static/*` → sirve con MIME correcto, imágenes → binario
+- **`do_POST()`** — guarda contenido editado
 
-- **Sort persistence**: `dir.html` guarda `sort`/`order` en `sessionStorage` y los restaura al navegar entre directorios
+### Trampa: TEXT_EXTENSIONS también captura .js y .css
+
+`.js` y `.css` están en `TEXT_EXTENSIONS`. Si caen en esa ruta se renderizan como código (HTML), rompiendo la página. **Solución**: ruteo explícito `/static/*` al inicio de `do_GET()` que sirve con MIME type correcto (`application/javascript`, `text/css`) antes de cualquier otro matching.
+
+```python
+# En do_GET, ANTES de TEXT_EXTENSIONS:
+if path.startswith("/static/"):
+    static_root = os.path.join(SCRIPT_DIR, "static")
+    # ... sirve con static_mime por extensión
+    return
+```
+
+### Directorios como navegación, no como página
+
+Visitar un directorio en URL ya NO muestra un listado de archivos. Muestra solo el toolbar con mensaje "Navega por los directorios desde el breadcrumb". El breadcrumb (cada segmento con `data-dir`) abre un modal que lista archivos por nombre/tamaño/fecha, ordenable por columnas. Los directorios en el modal se quedan en el modal (`showDirModal()`), los archivos navegan a la página del archivo.
+
+### Editor de código: highlight.js (vista) + Ace (edición)
+
+- **Vista**: highlight.js colorea el `<code>` en el DOM
+- **Edición**: Ace editor reemplaza el div `#editor` con editor completo con syntax highlighting
+- **Toggle**: crear/destruir instancia Ace sin recargar página
+- **Font size**: `--content-font-size` CSS custom property, Ace escucha evento `filex-fontchange` via `document.dispatchEvent`
+
+### Renderizado Markdown: marked.js (cliente)
+
+Todo el renderizado markdown se hace en el cliente con `marked.parse()`, eliminando el renderer custom Python que era propenso a errores con casos frontera (tablas, listas anidadas, code fences).
+
+### Preferencias persistidas (localStorage)
+
+| Key | Propósito | Default |
+|-----|-----------|---------|
+| `filex_font_size` | Tamaño de fuente (px) | 13 (código) / 14 (markdown) |
+| `filex_pref_tableBorder` | Bordes en tablas md | `true` |
+| `filex_pref_cellPad` | Padding de celdas de tabla md | 6px |
+| `filex_pref_modal_sort` | Columna/dirección de orden del modal | `{col:'name', dir:'asc'}` |
+
+**Convención**: usar `filex_pref_` para preferencias editables por el usuario, `filex_` para estado interno.
+
+### Breadcrumbs clickeables (no links)
+
+En vez de `<a href>` (que navegan la página), los breadcrumbs usan `<span class="bc-link" data-dir="/path/">` con click handler que abre el modal. El último elemento (archivo/directorio actual) es solo texto con `.bc-current` (no clickeable, abre el mismo directorio que su padre).
+
+### Seguridad
+
+Verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal). `do_POST()` aplica la misma validación.
+
+### Sort persistence
+
+El orden de columnas en el modal se persiste en `localStorage` (`filex_pref_modal_sort`) y se restaura al abrir el modal. En la página de directorios (antes dir.html), se usaba `sessionStorage` — ahora ya no hay página de directorios.
 
 ### Symlink para servir `~/.agents/`
 
