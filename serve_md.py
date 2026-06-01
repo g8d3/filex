@@ -148,11 +148,42 @@ def render_md(text, parent_path="/"):
     return MD_TMPL.replace("{{title}}", title).replace("{{content}}", body).replace("{{parent_path}}", parent_path)
 
 
-def render_code(text, ext, parent_path):
+def breadcrumb_code(path, full):
+    """VS Code-style breadcrumb: dirs as links + file as select with siblings."""
+    dir_path = os.path.dirname(path.rstrip("/")) or "/"
+    current_file = os.path.basename(full) if os.path.isfile(full) else ""
+    parent_full = os.path.dirname(full) if os.path.isfile(full) else full
+
+    parts = dir_path.strip("/").split("/") if dir_path != "/" else []
+    accum = ""
+    items = ['<a href="/" class="bc-link">/</a>']
+    for part in parts:
+        accum += "/" + part
+        items.append(f'<a href="{accum}/" class="bc-link">{part}</a>')
+
+    sep = '<span class="bc-sep"> / </span>'
+    bc = sep.join(items)
+
+    select_options = []
+    try:
+        for name in sorted(os.listdir(parent_full)):
+            fp = os.path.join(parent_full, name)
+            if os.path.isfile(fp):
+                selected = " selected" if name == current_file else ""
+                href = (dir_path + "/" + name) if dir_path != "/" else "/" + name
+                select_options.append(f'<option value="{href}"{selected}>{name}</option>')
+    except OSError:
+        pass
+
+    select_html = '<select class="file-select" onchange="location.href=this.value">' + "".join(select_options) + "</select>"
+    return bc + sep + select_html
+
+
+def render_code(text, ext, path, full):
     lang = LANG_MAP.get(ext, "plaintext")
-    title = os.path.basename(parent_path) if parent_path != "/" else "Archivo"
-    return CODE_TMPL.replace("{{title}}", title)\
-        .replace("{{parent_path}}", parent_path)\
+    bc = breadcrumb_code(path, full)
+    return CODE_TMPL.replace("{{breadcrumb}}", bc)\
+        .replace("{{title}}", os.path.basename(full))\
         .replace("{{language}}", lang)\
         .replace("{{json_content}}", json.dumps(text))\
         .replace("{{json_language}}", json.dumps(lang))
@@ -304,7 +335,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f:
                     text = f.read()
-                html_out = render_code(text, ext, os.path.dirname(path.rstrip("/")) or "/")
+                html_out = render_code(text, ext, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()

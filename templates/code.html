@@ -7,15 +7,42 @@
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .code-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .file-select {
+      font-size: 13px;
+      padding: 2px 6px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      font-family: inherit;
+      max-width: 320px;
+    }
+    .file-select:hover {
+      border-color: #06c;
+    }
+  </style>
 </head>
 <body>
-  <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-    <a href="{{parent_path}}">&larr; Volver</a>
-    <span style="flex:1"></span>
-    <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
-    <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
-    <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
-    <span id="saveMsg" style="font-size:13px;color:#888"></span>
+  <div class="code-header">
+    <div class="breadcrumb" style="font-size:14px;margin-bottom:4px">{{breadcrumb}}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span style="flex:1"></span>
+      <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
+      <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
+      <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
+      <span id="saveMsg" style="font-size:13px;color:#888"></span>
+    </div>
   </div>
 
   <div id="viewer">
