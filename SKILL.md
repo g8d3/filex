@@ -1,6 +1,6 @@
 ---
 name: filex
-description: "File server with Markdown rendering. Servidor HTTP liviano en Python que sirve archivos de un directorio con listado ordenable, renderizado de .md a HTML, breadcrumbs y soporte de imágenes. Trigger: filex, file server, servir archivos, markdown server."
+description: "File server with Markdown rendering and VS Code-like code viewer. Sirve archivos con listado ordenable, renderizado .md, visor/editor de código con highlight.js para 40+ extensiones, breadcrumb sticky con select de archivos, y edición inline. Trigger: filex, file server, servir archivos, markdown server, code viewer, visor de código."
 ---
 
 # filex — File server with Markdown rendering
@@ -8,9 +8,12 @@ description: "File server with Markdown rendering. Servidor HTTP liviano en Pyth
 ## Descripción
 
 Servidor HTTP liviano en Python que sirve archivos de un directorio con:
-- Listado de directorios con columnas ordenables (nombre, tamaño, fecha)
+- Listado de directorios con columnas ordenables (nombre, tamaño, fecha) y orden persistente entre navegaciones
 - Renderizado de archivos `.md` a HTML (headings, tablas, código, listas, negritas)
-- Breadcrumb navegable con cada segmento de ruta cliqueable
+- Visor de código con **highlight.js** (tema claro) para 40+ extensiones (`.py`, `.sh`, `.txt`, `.go`, `.rs`, `.js`, `.ts`, etc.)
+- Editor inline con botón Guardar (vía POST)
+- Breadcrumb tipo VS Code: directorios cliqueables + **select** para cambiar entre archivos del mismo directorio
+- Breadcrumb **sticky** (permanece visible al scrollear en archivos grandes)
 - Soporte de imágenes (PNG, JPG, GIF, WebP)
 
 ## Location
@@ -23,7 +26,8 @@ El proyecto completo vive en esta misma carpeta:
 ├── serve_md.py          # Servidor HTTP
 ├── templates/
 │   ├── dir.html         # Template para listado de directorios
-│   └── md.html          # Template para markdown renderizado
+│   ├── md.html          # Template para markdown renderizado
+│   └── code.html        # Template para visor/editor de código con highlight.js
 └── static/
     └── style.css        # Estilos
 ```
@@ -47,12 +51,21 @@ Opciones:
 - **`serve_md.py`** — servidor HTTP vía `http.server.SimpleHTTPRequestHandler`
   - `render_md(text, parent_path)` — convierte markdown a HTML, inyecta `{{parent_path}}` para el botón Volver
   - `render_dir(path, full, sort, order)` — genera listado con `breadcrumb_html()` y filas ordenables
+  - `render_code(text, ext, path, full)` — renderiza archivos de código en `code.html` con highlight.js
+  - `breadcrumb_code(path, full)` — breadcrumb tipo VS Code con `<select>` de archivos hermanos
   - `breadcrumb_html(path)` — genera HTML de migas de pan con links por segmento
-  - `do_GET()` — rutea: directorio → `render_dir`, .md → `render_md`, imágenes → binario, resto → `super().do_GET()`
+  - `do_GET()` — rutea: directorio → `render_dir`, .md → `render_md`, code → `render_code`, imágenes → binario, resto → octet-stream
+  - `do_POST()` — guarda contenido editado de un archivo (recibe `content` vía form-urlencoded)
+
+- **TEXT_EXTENSIONS**: set con +40 extensiones de código/texto que se renderizan con `code.html`
+
+- **LANG_MAP**: mapeo extensión → lenguaje highlight.js para syntax highlighting automático
 
 - **Templates**: usan `{{...}}` como placeholders (reemplazo string, sin motor de templates)
 
-- **Seguridad**: verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal)
+- **Seguridad**: verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal). `do_POST()` aplica la misma validación.
+
+- **Sort persistence**: `dir.html` guarda `sort`/`order` en `sessionStorage` y los restaura al navegar entre directorios
 
 ### Symlink para servir `~/.agents/`
 
