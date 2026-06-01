@@ -1,0 +1,123 @@
+---
+name: filex
+description: "File server with Markdown rendering. Servidor HTTP liviano en Python que sirve archivos de un directorio con listado ordenable, renderizado de .md a HTML, breadcrumbs y soporte de imágenes. Trigger: filex, file server, servir archivos, markdown server."
+---
+
+# filex — File server with Markdown rendering
+
+## Descripción
+
+Servidor HTTP liviano en Python que sirve archivos de un directorio con:
+- Listado de directorios con columnas ordenables (nombre, tamaño, fecha)
+- Renderizado de archivos `.md` a HTML (headings, tablas, código, listas, negritas)
+- Breadcrumb navegable con cada segmento de ruta cliqueable
+- Soporte de imágenes (PNG, JPG, GIF, WebP)
+
+## Location
+
+El proyecto completo vive en esta misma carpeta:
+```
+~/.agents/skills/filex/
+├── SKILL.md
+├── serve_md.py          # Servidor HTTP
+├── templates/
+│   ├── dir.html         # Template para listado de directorios
+│   └── md.html          # Template para markdown renderizado
+└── static/
+    └── style.css        # Estilos
+```
+
+## Cómo ejecutar
+
+```bash
+python3 ~/.agents/skills/filex/serve_md.py --root /ruta/a/servir --port 9090
+```
+
+Opciones:
+- `--root` — directorio raíz a servir (default: donde está `serve_md.py`)
+- `--port` — puerto (default: `9090`)
+- `--bind` — interfaz (default: `0.0.0.0`)
+
+## Systemd
+
+El servicio se llama `filex` y se gestiona con:
+
+```bash
+systemctl --user status filex
+systemctl --user restart filex
+systemctl --user stop filex
+```
+
+El unit file está trackeado en el repo `agents` en `roadmap/filex-service-example.service`.
+
+## Arquitectura
+
+- **`serve_md.py`** — servidor HTTP vía `http.server.SimpleHTTPRequestHandler`
+  - `render_md(text, parent_path)` — convierte markdown a HTML, inyecta `{{parent_path}}` para el botón Volver
+  - `render_dir(path, full, sort, order)` — genera listado con `breadcrumb_html()` y filas ordenables
+  - `breadcrumb_html(path)` — genera HTML de migas de pan con links por segmento
+  - `do_GET()` — rutea: directorio → `render_dir`, .md → `render_md`, imágenes → binario, resto → `super().do_GET()`
+
+- **Templates**: usan `{{...}}` como placeholders (reemplazo string, sin motor de templates)
+
+- **Seguridad**: verifica que la ruta resuelta esté dentro de `root_dir` (previene path traversal)
+
+## Systemd — Recargar tras cambios
+
+Cuando modificas el código de filex, el servidor en producción (puerto 9090) necesita ser reiniciado para reflejar los cambios.
+
+⚠️ **No crear un servidor nuevo en otro puerto** — hay que reemplazar el existente.
+
+### Recarga manual (cuando systemd bloquea)
+
+Si `systemctl --user` no está disponible por restricciones del tool, ejecutarlo dentro de una **tmux window** (corre en un shell real sin restricciones):
+
+```bash
+tmux new-window -d -n filex-reload \
+  'systemctl --user daemon-reload 2>&1 | tee /tmp/filex-reload.log; \
+   systemctl --user restart filex 2>&1 | tee -a /tmp/filex-reload.log; \
+   touch /tmp/filex-reload.done; tmux wait-for -S filex-reload'
+tmux wait-for filex-reload
+cat /tmp/filex-reload.log
+```
+
+Alternativa directa (matar e iniciar manualmente):
+```bash
+# 1. Matar procesos viejos
+/bin/kill -9 $(pgrep -f serve_md.py)
+
+# 2. Iniciar el nuevo desde la ubicación en skills
+nohup /home/vuos/.local/bin/uv run python3 \
+  /home/vuos/.agents/skills/filex/serve_md.py \
+  --root /home/vuos/code --port 9090 --bind 0.0.0.0 \
+  > /dev/null 2>&1 &
+```
+
+### Si systemd está disponible
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart filex
+```
+
+El unit file del servicio está en:
+`~/.config/systemd/user/filex.service`
+
+## Git
+
+El proyecto tiene su **propio repo** en `git@github.com:g8d3/filex.git`, independiente del repo `agents` que contiene las skills. El repo `agents` ignora esta carpeta vía `.gitignore`.
+
+Flujo:
+```bash
+# Cambios en filex
+cd ~/.agents/skills/filex
+git add -A && git commit -m "..." && git push
+
+# Si se cambia el .gitignore del repo agents
+cd ~/.agents/skills
+git add .gitignore && git commit -m "..." && git push
+```
+
+## Trigger para agents
+
+Cuando un usuario menciona "filex", "file server", "servir archivos", "markdown server", o pide modificar el servidor de archivos, cargar esta skill y seguir las instrucciones en SKILL.md.

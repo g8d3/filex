@@ -83,6 +83,25 @@ td.date {
   margin: 6px 0;
   font-size: 13px;
 }
+/* Breadcrumb */
+h1.breadcrumb {
+  font-size: 15px;
+  font-weight: normal;
+  margin: 8px 0;
+}
+.bc-link {
+  color: #06c;
+}
+.bc-link:hover {
+  text-decoration: underline;
+}
+.bc-current {
+  color: #333;
+  font-weight: bold;
+}
+.bc-sep {
+  color: #999;
+}
 /* Markdown tables */
 .md-content table {
   display: block;

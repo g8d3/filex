@@ -20,7 +20,7 @@ DIR_TMPL = load_tmpl("dir.html")
 MD_TMPL = load_tmpl("md.html")
 
 
-def render_md(text):
+def render_md(text, parent_path="/"):
     lines = text.split("\n")
     in_code = False
     in_table = False
@@ -88,7 +88,23 @@ def render_md(text):
     m = re.search(r"<h1>(.+?)</h1>", body)
     if m:
         title = m.group(1)
-    return MD_TMPL.replace("{{title}}", title).replace("{{content}}", body)
+    return MD_TMPL.replace("{{title}}", title).replace("{{content}}", body).replace("{{parent_path}}", parent_path)
+
+
+def breadcrumb_html(path):
+    if path == "/":
+        return '<span class="bc-root">/</span>'
+    parts = path.strip("/").split("/")
+    accum = ""
+    items = ['<a href="/" class="bc-link">/</a>']
+    for i, part in enumerate(parts):
+        accum += "/" + part
+        if i < len(parts) - 1:
+            items.append(f'<a href="{accum}/" class="bc-link">{part}</a>')
+        else:
+            items.append(f'<span class="bc-current">{part}</span>')
+    sep = '<span class="bc-sep"> / </span>'
+    return sep.join(items)
 
 
 def format_size(s):
@@ -164,7 +180,7 @@ def render_dir(path, full, sort, order):
     html = DIR_TMPL
     html = html.replace("{{parent}}", parent)
     html = html.replace("{{parent_label}}", parent_label)
-    html = html.replace("{{path}}", path)
+    html = html.replace("{{breadcrumb}}", breadcrumb_html(path))
     html = html.replace("{{name_order}}", nxt("name"))
     html = html.replace("{{size_order}}", nxt("size"))
     html = html.replace("{{date_order}}", nxt("date"))
@@ -207,7 +223,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r") as f:
                     text = f.read()
-                html = render_md(text)
+                html = render_md(text, os.path.dirname(path.rstrip("/")) or "/")
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
@@ -216,23 +232,49 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp"):
-            self.send_response(200)
-            with open(full, "rb") as f:
-                data = f.read()
-            mime = {
-                "png": "image/png",
-                "jpg": "image/jpeg",
-                "jpeg": "image/jpeg",
-                "gif": "image/gif",
-                "webp": "image/webp",
-            }[ext.lstrip(".")]
-            self.send_header("Content-type", mime)
-            self.end_headers()
-            self.wfile.write(data)
+        mime_map = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".txt": "text/plain; charset=utf-8",
+            ".html": "text/html; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+            ".json": "application/json; charset=utf-8",
+            ".pdf": "application/pdf",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
+        }
+
+        mime = mime_map.get(ext)
+        if mime is not None:
+            try:
+                with open(full, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", mime)
+                self.end_headers()
+                self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
             return
 
-        super().do_GET()
+        # Fallback: serve any other file type
+        try:
+            with open(full, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-type", "application/octet-stream")
+            self.end_headers()
+            self.wfile.write(data)
+        except FileNotFoundError:
+            self.send_error(404, "File not found")
+        except Exception as e:
+            self.send_error(500, str(e))
 
     def log_message(self, fmt, *args):
         pass
