@@ -28,4 +28,27 @@
       </tbody>
     </table>
   </body>
+  <script>
+    // Persist sort/order across navigation via sessionStorage
+    (function() {
+      const usp = new URLSearchParams(location.search);
+      let sort = usp.get('sort') || 'name';
+      let order = usp.get('order') || 'asc';
+      if (usp.get('sort')) { // only save if explicitly set
+        sessionStorage.setItem('filex_sort', sort);
+        sessionStorage.setItem('filex_order', order);
+      } else {
+        sort = sessionStorage.getItem('filex_sort') || sort;
+        order = sessionStorage.getItem('filex_order') || order;
+      }
+      // Append sort/order to every directory link and the parent link
+      document.querySelectorAll('a[href]').forEach(function(a) {
+        var h = a.getAttribute('href');
+        if (h && (h.endsWith('/') || h === '/')) {
+          var sep = h.indexOf('?') === -1 ? '?' : '&';
+          a.setAttribute('href', h + sep + 'sort=' + sort + '&order=' + order);
+        }
+      });
+    })();
+  </script>
 </html>
