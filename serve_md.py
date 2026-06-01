@@ -4,6 +4,8 @@
 import http.server
 import os
 import re
+import html
+import json
 import urllib.parse
 from datetime import datetime
 
@@ -18,6 +20,61 @@ def load_tmpl(name):
 
 DIR_TMPL = load_tmpl("dir.html")
 MD_TMPL = load_tmpl("md.html")
+CODE_TMPL = load_tmpl("code.html")
+
+
+# Extensiones de archivos de código/texto que se renderizan con el template code.html
+TEXT_EXTENSIONS = {
+    ".txt", ".py", ".sh", ".bash", ".zsh", ".rb", ".go", ".rs",
+    ".js", ".jsx", ".ts", ".tsx", ".c", ".h", ".cpp", ".hpp", ".cc",
+    ".java", ".kt", ".scala", ".swift", ".r", ".m", ".mm",
+    ".yaml", ".yml", ".toml", ".json", ".xml", ".sql",
+    ".css", ".scss", ".less", ".php", ".pl", ".lua", ".dart",
+    ".lisp", ".clj", ".hs", ".ex", ".exs", ".erl",
+    ".cfg", ".ini", ".conf", ".env", ".vue", ".svelte",
+    ".tex", ".vim", ".dockerfile", ".makefile", ".gradle",
+}
+
+# Mapeo de extensión a lenguaje highlight.js
+LANG_MAP = {
+    ".py": "python",
+    ".sh": "bash", ".bash": "bash", ".zsh": "bash",
+    ".txt": "plaintext",
+    ".rb": "ruby",
+    ".go": "go",
+    ".rs": "rust",
+    ".js": "javascript", ".jsx": "javascript",
+    ".ts": "typescript", ".tsx": "typescript",
+    ".c": "c", ".h": "c",
+    ".cpp": "cpp", ".hpp": "cpp", ".cc": "cpp",
+    ".java": "java",
+    ".kt": "kotlin",
+    ".scala": "scala",
+    ".swift": "swift",
+    ".r": "r",
+    ".m": "objectivec", ".mm": "objectivec",
+    ".yaml": "yaml", ".yml": "yaml",
+    ".toml": "ini",
+    ".json": "json",
+    ".xml": "xml",
+    ".sql": "sql",
+    ".css": "css", ".scss": "scss", ".less": "less",
+    ".php": "php",
+    ".pl": "perl",
+    ".lua": "lua",
+    ".dart": "dart",
+    ".lisp": "lisp",
+    ".clj": "clojure",
+    ".hs": "haskell",
+    ".ex": "elixir", ".exs": "elixir",
+    ".erl": "erlang",
+    ".cfg": "ini", ".ini": "ini", ".conf": "ini", ".env": "ini",
+    ".vue": "html",
+    ".svelte": "html",
+    ".dockerfile": "dockerfile",
+    ".tex": "latex",
+    ".vim": "vim",
+}
 
 
 def render_md(text, parent_path="/"):
@@ -89,6 +146,16 @@ def render_md(text, parent_path="/"):
     if m:
         title = m.group(1)
     return MD_TMPL.replace("{{title}}", title).replace("{{content}}", body).replace("{{parent_path}}", parent_path)
+
+
+def render_code(text, ext, parent_path):
+    lang = LANG_MAP.get(ext, "plaintext")
+    title = os.path.basename(parent_path) if parent_path != "/" else "Archivo"
+    return CODE_TMPL.replace("{{title}}", title)\
+        .replace("{{parent_path}}", parent_path)\
+        .replace("{{language}}", lang)\
+        .replace("{{json_content}}", json.dumps(text))\
+        .replace("{{json_language}}", json.dumps(lang))
 
 
 def breadcrumb_html(path):
@@ -232,17 +299,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
+        # Archivos de código/texto → render con template + highlight.js
+        if ext in TEXT_EXTENSIONS:
+            try:
+                with open(full, "r", encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+                html_out = render_code(text, ext, os.path.dirname(path.rstrip("/")) or "/")
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(html_out.encode("utf-8"))
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        # Archivos multimedia → servir binario
         mime_map = {
             ".png": "image/png",
             ".jpg": "image/jpeg",
             ".jpeg": "image/jpeg",
             ".gif": "image/gif",
             ".webp": "image/webp",
-            ".txt": "text/plain; charset=utf-8",
             ".html": "text/html; charset=utf-8",
-            ".css": "text/css; charset=utf-8",
-            ".js": "application/javascript; charset=utf-8",
-            ".json": "application/json; charset=utf-8",
             ".pdf": "application/pdf",
             ".svg": "image/svg+xml",
             ".ico": "image/x-icon",
@@ -263,7 +343,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Fallback: serve any other file type
+        # Fallback: cualquier otro archivo como descarga
         try:
             with open(full, "rb") as f:
                 data = f.read()
@@ -273,6 +353,37 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(data)
         except FileNotFoundError:
             self.send_error(404, "File not found")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        if not os.path.isfile(full):
+            self.send_error(404, "File not found")
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            params = urllib.parse.parse_qs(body)
+            content = params.get("content", [None])[0]
+            if content is None:
+                self.send_error(400, "Missing 'content' field")
+                return
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"OK")
         except Exception as e:
             self.send_error(500, str(e))
 

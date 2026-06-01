@@ -7,6 +7,8 @@ body {
   margin: auto;
   padding: 12px;
   font-size: 14px;
+  background: #fff;
+  color: #333;
 }
 h1,
 h2,
@@ -152,4 +154,26 @@ h1.breadcrumb {
   pre {
     font-size: 12px;
   }
+}
+
+/* Toolbar buttons for code viewer */
+.tb-btn {
+  padding: 4px 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+}
+.tb-btn:hover {
+  background: #f0f0f0;
+}
+.tb-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+pre code.hljs {
+  border-radius: 4px;
+  font-size: 13px;
 }

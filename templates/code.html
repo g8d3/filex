@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body>
+  <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+    <a href="{{parent_path}}">&larr; Volver</a>
+    <span style="flex:1"></span>
+    <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
+    <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
+    <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
+    <span id="saveMsg" style="font-size:13px;color:#888"></span>
+  </div>
+
+  <div id="viewer">
+    <pre><code id="codeBlock" class="{{language}}"></code></pre>
+  </div>
+
+  <div id="editor" style="display:none">
+    <textarea id="codeContent"
+      style="width:100%;min-height:400px;font-family:monospace;font-size:13px;padding:10px;border:1px solid #ccc;border-radius:4px;resize:vertical;background:#fafafa"
+    ></textarea>
+  </div>
+
+  <script>
+    const CONTENT = {{json_content}};
+    const LANG = {{json_language}};
+
+    document.getElementById('codeBlock').textContent = CONTENT;
+    document.getElementById('codeContent').value = CONTENT;
+    hljs.highlightElement(document.getElementById('codeBlock'));
+
+    function toggleEdit() {
+      const editing = document.getElementById('editor').style.display !== 'none';
+      document.getElementById('viewer').style.display = editing ? 'block' : 'none';
+      document.getElementById('editor').style.display = editing ? 'none' : 'block';
+      document.getElementById('editBtn').style.display = editing ? '' : 'none';
+      document.getElementById('saveBtn').style.display = editing ? 'none' : '';
+      document.getElementById('cancelBtn').style.display = editing ? 'none' : '';
+    }
+
+    async function saveFile() {
+      const content = document.getElementById('codeContent').value;
+      const btn = document.getElementById('saveBtn');
+      const msg = document.getElementById('saveMsg');
+      btn.disabled = true;
+      msg.textContent = 'Guardando…';
+      try {
+        const resp = await fetch(window.location.pathname, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: 'content=' + encodeURIComponent(content)
+        });
+        if (resp.ok) {
+          msg.textContent = '✓ Guardado — recargando…';
+          setTimeout(() => location.reload(), 600);
+        } else {
+          msg.textContent = '✗ Error: ' + await resp.text();
+          btn.disabled = false;
+        }
+      } catch (e) {
+        msg.textContent = '✗ Error de red';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
