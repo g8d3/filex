@@ -227,19 +227,6 @@ def list_dir(full, sort, order):
 def render_dir(path, full, sort, order):
     entries = list_dir(full, sort, order)
 
-    rows = ""
-    for e in entries:
-        link = (path + "/" + e["name"]).replace("//", "/")
-        if e["is_dir"]:
-            link += "/"
-            rows += f'<tr><td class="name dir"><a href="{link}">{e["name"]}/</a></td>'
-        else:
-            rows += f'<tr><td class="name"><a href="{link}">{e["name"]}</a></td>'
-        rows += (
-            f'<td class="size">{format_size(e["size"]) if not e["is_dir"] else ""}</td>'
-        )
-        rows += f'<td class="date">{format_date(e["date"])}</td></tr>'
-
     def icon(s):
         return (
             " &#9660;"
@@ -250,23 +237,31 @@ def render_dir(path, full, sort, order):
     def nxt(s):
         return "desc" if s == sort and order == "asc" else "asc"
 
-    parent = os.path.dirname(path.rstrip("/"))
-    if parent == path.rstrip("/"):
-        parent = "/"
-    parent_label = "Raiz" if parent == "/" else os.path.basename(parent)
+    rows = ""
+    for e in entries:
+        link = (path + "/" + e["name"]).replace("//", "/")
+        if e["is_dir"]:
+            link += "/"
+            rows += f'<tr><td class="name dir"><a href="{link}">{e["name"]}/</a></td>'
+        else:
+            rows += f'<tr><td class="name"><a href="{link}">{e["name"]}</a></td>'
+        rows += f'<td class="size">{format_size(e["size"]) if not e["is_dir"] else ""}</td>'
+        rows += f'<td class="date">{format_date(e["date"])}</td></tr>'
 
-    html = DIR_TMPL
-    html = html.replace("{{parent}}", parent)
-    html = html.replace("{{parent_label}}", parent_label)
-    html = html.replace("{{breadcrumb}}", breadcrumb_html(path))
-    html = html.replace("{{name_order}}", nxt("name"))
-    html = html.replace("{{size_order}}", nxt("size"))
-    html = html.replace("{{date_order}}", nxt("date"))
-    html = html.replace("{{name_icon}}", icon("name"))
-    html = html.replace("{{size_icon}}", icon("size"))
-    html = html.replace("{{date_icon}}", icon("date"))
-    html = html.replace("{{rows}}", rows)
-    return html
+    table = '<table><thead><tr>' \
+        + f'<th onclick="location.href=\'?sort=name&order={nxt("name")}\'">Nombre<span class="s">{icon("name")}</span></th>' \
+        + f'<th onclick="location.href=\'?sort=size&order={nxt("size")}\'">Tama\u00f1o<span class="s">{icon("size")}</span></th>' \
+        + f'<th onclick="location.href=\'?sort=date&order={nxt("date")}\'">Modificado<span class="s">{icon("date")}</span></th>' \
+        + '</tr></thead><tbody>' + rows + '</tbody></table>'
+
+    bc = breadcrumb_html(path)
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+    title = os.path.basename(path.rstrip("/")) if path != "/" else "Indice"
+
+    return DIR_TMPL\
+        .replace("{{title}}", title)\
+        .replace("{{toolbar_html}}", toolbar)\
+        .replace("{{table_html}}", table)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
