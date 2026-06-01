@@ -100,8 +100,17 @@ systemctl --user daemon-reload
 systemctl --user restart filex
 ```
 
-El unit file del servicio está en:
-`~/.config/systemd/user/filex.service`
+El unit file canónico está en el repo de filex:
+`~/.agents/skills/filex/filex.service`
+
+Se enlaza simbólicamente desde donde systemd lo espera:
+`~/.config/systemd/user/filex.service` → `~/.agents/skills/filex/filex.service`
+
+Si cambias el servicio, edita el archivo en skills (queda trackeado en git) y recarga:
+```bash
+systemctl --user daemon-reload
+systemctl --user restart filex
+```
 
 ## Git
 

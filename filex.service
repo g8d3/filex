@@ -1,0 +1,13 @@
+[Unit]
+Description=FileX — file server with Markdown rendering
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/vuos/.local/bin/uv run python3 /home/vuos/.agents/skills/filex/serve_md.py --root /home/vuos/code --port 9090 --bind 0.0.0.0
+Restart=always
+RestartSec=5
+WorkingDirectory=/home/vuos/.agents/skills/filex
+
+[Install]
+WantedBy=default.target
