@@ -69,6 +69,18 @@ var modalData = null;
 var modalSortCol = 'name';
 var modalSortDir = 'asc';
 
+function truncateName(name) {
+  if (name.length <= 30) return name;
+  var dot = name.lastIndexOf('.');
+  var ext = dot > 0 ? name.slice(dot) : '';
+  var base = dot > 0 ? name.slice(0, dot) : name;
+  var avail = 30 - 3 - ext.length;
+  if (avail < 8) return base.slice(0, 14) + '...' + name.slice(-12);
+  var front = Math.ceil(avail * 0.55);
+  var back = avail - front;
+  return base.slice(0, front) + '...' + base.slice(-back) + ext;
+}
+
 function renderModalRows() {
   var rows = document.getElementById('modalRows');
   if (!rows || !modalData) return;
@@ -88,6 +100,7 @@ function renderModalRows() {
   sorted.forEach(function(e) {
     var cls = e.is_dir ? 'dir-row' : 'file-row';
     var label = e.is_dir ? e.name + '/' : e.name;
+    var display = truncateName(label);
     var files = document.getElementById('dirFiles');
     var dir = files ? files.dataset.dirFiles || '/' : '/';
     var href = dir.replace(/\/+$/, '') + '/' + encodeURIComponent(e.name) + (e.is_dir ? '/' : '');
@@ -96,7 +109,7 @@ function renderModalRows() {
     tr.style.cursor = 'pointer';
     if (e.is_dir) {
       tr.innerHTML =
-        '<td><a href="javascript:void(0)" data-dir="' + href + '" class="modal-dir-link">' + label.replace(/</g, '&lt;') + '</a></td>' +
+        '<td><a href="javascript:void(0)" data-dir="' + href + '" class="modal-dir-link">' + display.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col"></td>' +
         '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
       tr.addEventListener('click', function() {
@@ -104,7 +117,7 @@ function renderModalRows() {
       });
     } else {
       tr.innerHTML =
-        '<td><a href="' + href + '">' + label.replace(/</g, '&lt;') + '</a></td>' +
+        '<td><a href="' + href + '">' + display.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col">' + e.size_fmt + '</td>' +
         '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
       tr.addEventListener('click', function() {
@@ -121,6 +134,10 @@ function updateSortIcons() {
     el.textContent = '';
   });
   var icon = modalSortDir === 'asc' ? ' ▲' : ' ▼';
+  document.querySelectorAll('#modalSortName, #modalSortSize, #modalSortDate').forEach(function(el) {
+    el.style.color = '#06c';
+    el.style.fontWeight = 'bold';
+  });
   var id = {name:'modalSortName', size:'modalSortSize', date:'modalSortDate'}[modalSortCol];
   var el = document.getElementById(id);
   if (el) el.textContent = icon;
