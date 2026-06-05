@@ -201,15 +201,14 @@ def format_date(ts):
 
 def list_dir(full, sort, order):
     entries = []
-    for name in os.listdir(full):
-        fp = os.path.join(full, name)
-        st = os.stat(fp)
+    for entry in os.scandir(full):
+        st = entry.stat()
         entries.append(
             {
-                "name": name,
-                "size": st.st_size if os.path.isfile(fp) else 0,
+                "name": entry.name,
+                "size": st.st_size if entry.is_file() else 0,
                 "date": st.st_mtime,
-                "is_dir": os.path.isdir(fp),
+                "is_dir": entry.is_dir(),
             }
         )
 
