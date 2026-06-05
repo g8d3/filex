@@ -191,6 +191,8 @@ pre code.hljs {
   overflow-x: auto;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 .dir-files-body table {
   width: 100%;

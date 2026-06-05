@@ -81,7 +81,7 @@ function renderModalRows() {
       tr.innerHTML =
         '<td><a href="#" data-dir="' + href + '" class="modal-dir-link">' + label.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col"></td>' +
-        '<td class="date-col"></td>';
+        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
       tr.addEventListener('click', function(ev) {
         if (ev.target.tagName !== 'A') {
           showDirModal(href);
@@ -131,7 +131,7 @@ function showDirModal(dir) {
   if (!files || !title || !rows) return;
   title.textContent = '📁 ' + dir;
   rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">Cargando…</td></tr>';
-  files.style.display = 'block';
+  files.style.display = '';
   files.dataset.dirFiles = dir;
   var q = dir.indexOf('?') >= 0 ? '&format=json' : '?format=json';
   fetch(dir + q)
