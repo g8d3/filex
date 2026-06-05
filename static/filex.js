@@ -79,23 +79,19 @@ function renderModalRows() {
     tr.style.cursor = 'pointer';
     if (e.is_dir) {
       tr.innerHTML =
-        '<td><a href="#" data-dir="' + href + '" class="modal-dir-link">' + label.replace(/</g, '&lt;') + '</a></td>' +
+        '<td><a href="javascript:void(0)" data-dir="' + href + '" class="modal-dir-link">' + label.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col"></td>' +
         '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
-      tr.addEventListener('click', function(ev) {
-        if (ev.target.tagName !== 'A') {
-          showDirModal(href);
-        }
+      tr.addEventListener('click', function() {
+        showDirModal(href);
       });
     } else {
       tr.innerHTML =
         '<td><a href="' + href + '">' + label.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col">' + e.size_fmt + '</td>' +
         '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
-      tr.addEventListener('click', function(ev) {
-        if (ev.target.tagName !== 'A') {
-          window.location.href = href;
-        }
+      tr.addEventListener('click', function() {
+        window.location.href = href;
       });
     }
     rows.appendChild(tr);
