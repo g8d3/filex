@@ -128,7 +128,7 @@ def render_md(text, path, full):
     if m:
         title = m.group(1)
     bc = breadcrumb_code(path, full)
-    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
     return MD_TMPL.replace("{{title}}", title)\
         .replace("{{toolbar_html}}", toolbar)\
         .replace("{{json_content}}", json.dumps(text))
@@ -160,7 +160,7 @@ def render_code(text, ext, path, full):
     lang = LANG_MAP.get(ext, "plaintext")
     ace_lang = ACE_MODE_MAP.get(lang, "text")
     bc = breadcrumb_code(path, full)
-    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
     return CODE_TMPL.replace("{{title}}", os.path.basename(full))\
         .replace("{{toolbar_html}}", toolbar)\
         .replace("{{language}}", lang)\
@@ -306,7 +306,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
             # Viewing a directory: just show toolbar with empty content
             bc = breadcrumb_html(path.rstrip("/") or "/")
-            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc)
+            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
             title = os.path.basename(path.rstrip("/")) if path != "/" else ROOT_NAME
             page = (
                 '<!doctype html><html lang="es"><head>'

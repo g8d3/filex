@@ -207,6 +207,7 @@ pre code.hljs {
   position: sticky;
   top: 0;
   background: #fff;
+  z-index: 1;
 }
 .dir-files-body td {
   padding: 4px 8px;
@@ -247,7 +248,7 @@ pre code.hljs {
     font-size: 12px;
   }
   .dir-files-body {
-    padding: 4px 8px 8px;
+    padding: 0 8px 8px;
   }
   .dir-files-body td,
   .dir-files-body th {

@@ -125,7 +125,27 @@ function showDirModal(dir) {
   var title = document.getElementById('modalTitle');
   var rows = document.getElementById('modalRows');
   if (!files || !title || !rows) return;
-  title.textContent = '📁 ' + dir;
+  var rootName = files.getAttribute('data-root-name') || '/';
+  var parts = dir.replace(/\/+$/, '').split('/').filter(Boolean);
+  var accum = '';
+  var html = '<span class="bc-link" data-dir="/">📁 ' + rootName + '</span>';
+  for (var i = 0; i < parts.length; i++) {
+    accum += '/' + parts[i];
+    if (i < parts.length - 1) {
+      html += '<span class="bc-sep"> / </span><span class="bc-link" data-dir="' + accum + '/">' + parts[i] + '</span>';
+    } else {
+      html += '<span class="bc-sep"> / </span><span class="bc-current">' + parts[i] + '</span>';
+    }
+  }
+  title.innerHTML = html;
+  // Bind clicks on new breadcrumb links
+  title.querySelectorAll('.bc-link').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      var d = this.getAttribute('data-dir');
+      if (d) showDirModal(d);
+    });
+  });
   rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">Cargando…</td></tr>';
   files.style.display = '';
   files.dataset.dirFiles = dir;
