@@ -2,14 +2,18 @@
     <div id="dirFiles" class="dir-files" style="display:none" data-root-name="{{root_name}}">
       <div class="dir-files-header">
         <span class="dir-files-title" id="modalTitle"></span>
-        <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1">✖</button>
+        <span style="flex:1"></span>
+        <button onclick="changeDirFontSize(-1)" class="tb-btn" title="Reducir fuente">A−</button>
+        <button onclick="changeDirFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
+        <span id="dirFontSizeLabel" style="font-size:11px;color:#888;min-width:28px;text-align:center"></span>
+        <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1;margin-left:4px">✖</button>
       </div>
       <div class="dir-files-body">
         <table>
           <thead><tr>
             <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
-            <th onclick="sortModal('size')" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
-            <th onclick="sortModal('date')" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
+            <th onclick="sortModal('size')" class="size-col" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
+            <th onclick="sortModal('date')" class="date-col" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
           </tr></thead>
           <tbody id="modalRows"></tbody>
         </table>

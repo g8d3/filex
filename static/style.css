@@ -188,7 +188,7 @@ pre code.hljs {
   font-weight: bold;
 }
 .dir-files-body {
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -196,23 +196,39 @@ pre code.hljs {
 }
 .dir-files-body table {
   width: 100%;
-  font-size: 13px;
+  font-size: var(--dir-font-size, 14px);
   border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid #ccc;
+}
+.dir-files-body th:first-child,
+.dir-files-body td:first-child {
+  width: 58%;
+}
+.dir-files-body .size-col {
+  text-align: right;
+  color: #666;
+  width: 17%;
+}
+.dir-files-body .date-col {
+  color: #888;
+  width: 25%;
 }
 .dir-files-body th {
   text-align: left;
-  padding: 6px 8px;
-  border-bottom: 2px solid #ccc;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
   white-space: nowrap;
   position: sticky;
   top: 0;
   background: #fff;
   z-index: 1;
+  font-size: var(--dir-font-size, 14px);
 }
 .dir-files-body td {
-  padding: 4px 8px;
-  border-bottom: 1px solid #e0e0e0;
-  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid #e0e0e0;
+  font-size: var(--dir-font-size, 14px);
 }
 .dir-files-body .dir-row {
   font-weight: bold;
@@ -248,14 +264,24 @@ pre code.hljs {
     font-size: 12px;
   }
   .dir-files-body {
-    padding: 0 8px 8px;
+    padding: 0 4px 4px;
   }
   .dir-files-body td,
   .dir-files-body th {
-    font-size: 11px;
-    padding: 2px 4px;
+    font-size: var(--dir-font-size, 13px);
+    padding: 5px 6px;
   }
-  .dir-files-body .size-col {
+.dir-files-body td:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dir-files-body td:first-child a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.dir-files-body .size-col {
     width: auto;
     min-width: 40px;
   }

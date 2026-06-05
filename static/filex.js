@@ -18,6 +18,23 @@
   window.getFontSize = function() { return fs; };
 })();
 
+// ===== Directory Font Size =====
+(function() {
+  var dfs = parseInt(localStorage.getItem('filex_dir_font_size') || '14');
+  function applyDir(px) {
+    var body = document.getElementById('dirFiles');
+    if (body) body.style.setProperty('--dir-font-size', px + 'px');
+    var lbl = document.getElementById('dirFontSizeLabel');
+    if (lbl) lbl.textContent = px + 'px';
+  }
+  applyDir(dfs);
+  window.changeDirFontSize = function(delta) {
+    dfs = Math.max(10, Math.min(24, dfs + delta));
+    applyDir(dfs);
+    localStorage.setItem('filex_dir_font_size', dfs);
+  };
+})();
+
 // ===== Preferences =====
 function loadPref(key, def) {
   try { var v = localStorage.getItem('filex_pref_' + key); return v !== null ? JSON.parse(v) : def; }
