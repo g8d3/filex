@@ -166,72 +166,60 @@ pre code.hljs {
   font-size: 13px;
 }
 
-/* ===== Directory Modal ===== */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: none;
-  z-index: 2000;
-  pointer-events: none;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 60px;
-}
-.modal-box {
-  background: #fff;
-  border-radius: 8px 8px 0 0;
-  max-width: 640px;
-  width: 92%;
+/* ===== Directory Files inside bottom-bar ===== */
+.dir-files {
+  border-bottom: 1px solid #e0e0e0;
   max-height: 50vh;
-  overflow-y: auto;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-  pointer-events: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-.modal-header {
+.dir-files-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid #e0e0e0;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  border-radius: 8px 8px 0 0;
+  flex-shrink: 0;
+  background: #fafafa;
 }
-.modal-title {
+.dir-files-title {
   font-size: 14px;
   font-weight: bold;
 }
-.modal-body {
-  padding: 8px 16px 16px;
+.dir-files-body {
   overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
 }
-.modal-body table {
+.dir-files-body table {
   width: 100%;
   font-size: 13px;
   border-collapse: collapse;
 }
-.modal-body th {
+.dir-files-body th {
   text-align: left;
   padding: 6px 8px;
   border-bottom: 2px solid #ccc;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: #fff;
 }
-.modal-body td {
+.dir-files-body td {
   padding: 4px 8px;
   border-bottom: 1px solid #e0e0e0;
   white-space: nowrap;
 }
-.modal-body .dir-row {
+.dir-files-body .dir-row {
   font-weight: bold;
 }
-.modal-body .size-col {
+.dir-files-body .size-col {
   text-align: right;
   color: #666;
   width: 70px;
 }
-.modal-body .date-col {
+.dir-files-body .date-col {
   color: #888;
   width: 120px;
 }
@@ -256,27 +244,19 @@ pre code.hljs {
   .md-content table {
     font-size: 12px;
   }
-  .modal-overlay {
-    padding-bottom: 75px;
-  }
-  .modal-box {
-    width: 100%;
-    max-width: 100%;
-    border-radius: 8px 8px 0 0;
-  }
-  .modal-body {
+  .dir-files-body {
     padding: 4px 8px 8px;
   }
-  .modal-body td,
-  .modal-body th {
+  .dir-files-body td,
+  .dir-files-body th {
     font-size: 11px;
     padding: 2px 4px;
   }
-  .modal-body .size-col {
+  .dir-files-body .size-col {
     width: auto;
     min-width: 40px;
   }
-  .modal-body .date-col {
+  .dir-files-body .date-col {
     width: auto;
     min-width: 60px;
   }

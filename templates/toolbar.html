@@ -1,4 +1,20 @@
   <div class="bottom-bar">
+    <div id="dirFiles" class="dir-files" style="display:none">
+      <div class="dir-files-header">
+        <span class="dir-files-title" id="modalTitle"></span>
+        <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1">✖</button>
+      </div>
+      <div class="dir-files-body">
+        <table>
+          <thead><tr>
+            <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
+            <th onclick="sortModal('size')" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
+            <th onclick="sortModal('date')" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
+          </tr></thead>
+          <tbody id="modalRows"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="breadcrumb" style="font-size:14px;margin-bottom:4px">{{breadcrumb}}</div>
     <div class="toolbar">
       <span style="flex:1"></span>
@@ -22,25 +38,5 @@
         Celdas: <input type="range" id="prefPadding" min="2" max="16" value="6" onchange="setPref('cellPad', parseInt(this.value))">
         <span id="prefPaddingVal">6</span>px
       </label>
-    </div>
-  </div>
-
-  <!-- Directory Modal -->
-  <div id="dirModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeDirModal()">
-    <div class="modal-box">
-      <div class="modal-header">
-        <span class="modal-title" id="modalTitle"></span>
-        <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1">✖</button>
-      </div>
-      <div class="modal-body">
-        <table>
-          <thead><tr>
-            <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
-            <th onclick="sortModal('size')" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
-            <th onclick="sortModal('date')" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
-          </tr></thead>
-          <tbody id="modalRows"></tbody>
-        </table>
-      </div>
     </div>
   </div>

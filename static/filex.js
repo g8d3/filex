@@ -71,8 +71,8 @@ function renderModalRows() {
   sorted.forEach(function(e) {
     var cls = e.is_dir ? 'dir-row' : 'file-row';
     var label = e.is_dir ? e.name + '/' : e.name;
-    var modal = document.getElementById('dirModal');
-    var dir = modal ? modal.dataset.modalDir || '/' : '/';
+    var files = document.getElementById('dirFiles');
+    var dir = files ? files.dataset.dirFiles || '/' : '/';
     var href = dir.replace(/\/+$/, '') + '/' + encodeURIComponent(e.name) + (e.is_dir ? '/' : '');
     var tr = document.createElement('tr');
     tr.className = cls;
@@ -125,14 +125,14 @@ function sortModal(col) {
 }
 
 function showDirModal(dir) {
-  var modal = document.getElementById('dirModal');
+  var files = document.getElementById('dirFiles');
   var title = document.getElementById('modalTitle');
   var rows = document.getElementById('modalRows');
-  if (!modal || !title || !rows) return;
+  if (!files || !title || !rows) return;
   title.textContent = '📁 ' + dir;
   rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">Cargando…</td></tr>';
-  modal.style.display = 'flex';
-  modal.dataset.modalDir = dir;
+  files.style.display = 'block';
+  files.dataset.dirFiles = dir;
   var q = dir.indexOf('?') >= 0 ? '&format=json' : '?format=json';
   fetch(dir + q)
     .then(function(r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
@@ -153,7 +153,7 @@ function showDirModal(dir) {
     });
 }
 function closeDirModal() {
-  var el = document.getElementById('dirModal');
+  var el = document.getElementById('dirFiles');
   if (el) el.style.display = 'none';
 }
 // ===== Breadcrumb clicks =====
