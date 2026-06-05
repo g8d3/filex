@@ -220,6 +220,9 @@ pre code.hljs {
   font-size: var(--dir-font-size, 14px);
   white-space: nowrap;
 }
+.dir-files-body tr:nth-child(even) td {
+  background: #f9f9f9;
+}
 .dir-files-body td:first-child {
   max-width: 55%;
   overflow: hidden;
