@@ -266,6 +266,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 ".webp": "image/webp",
                 ".svg": "image/svg+xml",
                 ".ico": "image/x-icon",
+                ".mp4": "video/mp4",
+                ".webm": "video/webm",
+                ".ogg": "video/ogg",
+                ".mov": "video/quicktime",
+                ".mp3": "audio/mpeg",
+                ".wav": "audio/wav",
+                ".pdf": "application/pdf",
             }
             sext = os.path.splitext(safe)[1].lower()
             try:
@@ -360,6 +367,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             ".pdf": "application/pdf",
             ".svg": "image/svg+xml",
             ".ico": "image/x-icon",
+            ".mp4": "video/mp4",
+            ".webm": "video/webm",
+            ".ogg": "video/ogg",
+            ".mov": "video/quicktime",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".flac": "audio/flac",
+            ".opus": "audio/opus",
         }
 
         mime = mime_map.get(ext)

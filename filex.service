@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/home/vuos/.local/bin/uv run python3 /home/vuos/.agents/skills/filex/serve_md.py --root /home/vuos/code --port 9090 --bind 0.0.0.0
+ExecStart=/home/vuos/.local/bin/uv run python3 /home/vuos/code/filex/serve_md.py --root /home/vuos/code --port 9090 --bind 0.0.0.0
 Restart=always
 RestartSec=5
-WorkingDirectory=/home/vuos/.agents/skills/filex
+WorkingDirectory=/home/vuos/code/filex
 
 [Install]
 WantedBy=default.target
