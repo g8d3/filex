@@ -10,15 +10,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9/ace.js"></script>
   <script src="/static/filex.js"></script>
   <style>
-    .sticky-header {
-      position: sticky;
-      top: 0;
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       z-index: 100;
       background: #fff;
-      border-bottom: 1px solid #e0e0e0;
-      padding-bottom: 6px;
-      margin-bottom: 8px;
+      border-top: 1px solid #e0e0e0;
+      padding: 6px 12px;
     }
+    body { padding-bottom: 60px; }
     .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .toolbar-sep { color: #ddd; margin: 0 2px; }
     #editor { min-height: 400px; height: 80vh; border: 1px solid #ccc; border-radius: 4px; }

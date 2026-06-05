@@ -284,4 +284,23 @@ pre code.hljs {
   .sticky-header {
     padding-bottom: 4px;
   }
+  body {
+    padding-bottom: 70px;
+  }
+}
+
+/* Bottom bar for mobile-first navigation */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border-top: 1px solid #e0e0e0;
+  padding: 6px 12px;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+body {
+  padding-bottom: 65px;
 }
