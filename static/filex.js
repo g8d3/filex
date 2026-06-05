@@ -74,25 +74,31 @@ function renderModalRows() {
     var modal = document.getElementById('dirModal');
     var dir = modal ? modal.dataset.modalDir || '/' : '/';
     var href = dir.replace(/\/+$/, '') + '/' + encodeURIComponent(e.name) + (e.is_dir ? '/' : '');
+    var tr = document.createElement('tr');
+    tr.className = cls;
+    tr.style.cursor = 'pointer';
     if (e.is_dir) {
-      rows.innerHTML += '<tr class="' + cls + '">' +
+      tr.innerHTML =
         '<td><a href="#" data-dir="' + href + '" class="modal-dir-link">' + label.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col"></td>' +
-        '<td class="date-col"></td></tr>';
+        '<td class="date-col"></td>';
+      tr.addEventListener('click', function(ev) {
+        if (ev.target.tagName !== 'A') {
+          showDirModal(href);
+        }
+      });
     } else {
-      rows.innerHTML += '<tr class="' + cls + '">' +
+      tr.innerHTML =
         '<td><a href="' + href + '">' + label.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col">' + e.size_fmt + '</td>' +
-        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td></tr>';
+        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
+      tr.addEventListener('click', function(ev) {
+        if (ev.target.tagName !== 'A') {
+          window.location.href = href;
+        }
+      });
     }
-  });
-  // Bind directory clicks to stay in modal
-  document.querySelectorAll('.modal-dir-link').forEach(function(el) {
-    el.onclick = function(e) {
-      e.preventDefault();
-      var d = this.getAttribute('data-dir');
-      if (d) showDirModal(d);
-    };
+    rows.appendChild(tr);
   });
   updateSortIcons();
 }
