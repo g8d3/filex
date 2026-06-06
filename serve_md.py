@@ -27,6 +27,7 @@ TOOLBAR_TMPL = load_tmpl("toolbar.html")
 
 
 # Extensiones de archivos de código/texto que se renderizan con el template code.html
+# Se compara contra la extensión y, si está vacía, contra el nombre completo
 TEXT_EXTENSIONS = {
     ".txt", ".py", ".sh", ".bash", ".zsh", ".rb", ".go", ".rs",
     ".js", ".jsx", ".ts", ".tsx", ".c", ".h", ".cpp", ".hpp", ".cc",
@@ -36,6 +37,10 @@ TEXT_EXTENSIONS = {
     ".lisp", ".clj", ".hs", ".ex", ".exs", ".erl",
     ".cfg", ".ini", ".conf", ".env", ".vue", ".svelte",
     ".tex", ".vim", ".dockerfile", ".makefile", ".gradle",
+    # Dotfiles y archivos sin extensión
+    ".gitignore", ".dockerignore", ".editorconfig", ".gitattributes",
+    ".gitmodules", ".env.example", ".python-version", ".nvmrc",
+    "dockerfile", "makefile",
 }
 
 # Mapeo de extensión a lenguaje highlight.js
@@ -77,6 +82,17 @@ LANG_MAP = {
     ".dockerfile": "dockerfile",
     ".tex": "latex",
     ".vim": "vim",
+    # Dotfiles y archivos sin extensión
+    ".gitignore": "plaintext",
+    ".dockerignore": "plaintext",
+    ".editorconfig": "ini",
+    ".gitattributes": "plaintext",
+    ".gitmodules": "ini",
+    ".env.example": "ini",
+    ".python-version": "plaintext",
+    ".nvmrc": "plaintext",
+    "dockerfile": "dockerfile",
+    "makefile": "makefile",
 }
 
 # Mapeo de lenguaje highlight.js a modo Ace editor
@@ -119,6 +135,7 @@ ACE_MODE_MAP = {
     "vim": "text",
     "ini": "ini",
     "plaintext": "text",
+    "makefile": "text",
 }
 
 
@@ -129,9 +146,10 @@ def render_md(text, path, full):
         title = m.group(1)
     bc = breadcrumb_code(path, full)
     toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+    safe_json = json.dumps(text).replace("</", "<\\/")
     return MD_TMPL.replace("{{title}}", title)\
         .replace("{{toolbar_html}}", toolbar)\
-        .replace("{{json_content}}", json.dumps(text))
+        .replace("{{json_content}}", safe_json)
 
 
 def breadcrumb_code(path, full):
@@ -156,17 +174,20 @@ def breadcrumb_code(path, full):
     return bc
 
 
-def render_code(text, ext, path, full):
-    lang = LANG_MAP.get(ext, "plaintext")
+def render_code(text, text_key, path, full):
+    lang = LANG_MAP.get(text_key, "plaintext")
     ace_lang = ACE_MODE_MAP.get(lang, "text")
     bc = breadcrumb_code(path, full)
     toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+    safe_content = json.dumps(text).replace("</", "<\\/")
+    safe_lang = json.dumps(lang).replace("</", "<\\/")
+    safe_ace = json.dumps(ace_lang).replace("</", "<\\/")
     return CODE_TMPL.replace("{{title}}", os.path.basename(full))\
         .replace("{{toolbar_html}}", toolbar)\
-        .replace("{{language}}", lang)\
-        .replace("{{json_content}}", json.dumps(text))\
-        .replace("{{json_language}}", json.dumps(lang))\
-        .replace("{{json_ace_lang}}", json.dumps(ace_lang))
+        .replace("{{language}}", "language-" + lang)\
+        .replace("{{json_content}}", safe_content)\
+        .replace("{{json_language}}", safe_lang)\
+        .replace("{{json_ace_lang}}", safe_ace)
 
 
 def breadcrumb_html(path):
@@ -326,6 +347,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         ext = os.path.splitext(full)[1].lower()
+        # Para dotfiles (.gitignore, .env, etc.) y archivos sin extensión (Makefile),
+        # usar el nombre completo como clave de búsqueda
+        text_key = ext if ext else os.path.basename(full).lower()
+
         if ext == ".md":
             try:
                 with open(full, "r") as f:
@@ -340,11 +365,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         # Archivos de código/texto → render con template + highlight.js
-        if ext in TEXT_EXTENSIONS:
+        if text_key in TEXT_EXTENSIONS:
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f:
                     text = f.read()
-                html_out = render_code(text, ext, path, full)
+                html_out = render_code(text, text_key, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
