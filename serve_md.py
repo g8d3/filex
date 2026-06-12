@@ -196,12 +196,9 @@ def breadcrumb_html(path):
     parts = path.strip("/").split("/")
     accum = ""
     items = [f'<span class="bc-link" data-dir="/">{ROOT_NAME}</span>']
-    for i, part in enumerate(parts):
+    for part in parts:
         accum += "/" + part
-        if i < len(parts) - 1:
-            items.append(f'<span class="bc-link" data-dir="{accum}/">{part}</span>')
-        else:
-            items.append(f'<span class="bc-current">{part}</span>')
+        items.append(f'<span class="bc-link" data-dir="{accum}/">{part}</span>')
     sep = '<span class="bc-sep"> / </span>'
     return sep.join(items)
 
