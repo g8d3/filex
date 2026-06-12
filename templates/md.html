@@ -41,7 +41,9 @@
 
   <script>
     const CONTENT = {{json_content}};
+    const BASE_DIR = window.location.pathname.replace(/\/[^/]*$/, '/');
 
+    marked.use({ baseUrl: BASE_DIR });
     document.getElementById('viewer').innerHTML = marked.parse(CONTENT);
     document.getElementById('mdContent').value = CONTENT;
 
