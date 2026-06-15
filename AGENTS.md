@@ -11,6 +11,7 @@
 |---|---|
 | `serve_md.py` | Servidor HTTP + toda la lógica |
 | `templates/code.html` | Template para archivos de código (highlight.js + Ace) |
+| `templates/csv.html` | Template para archivos .csv (PapaParse → tabla HTML) |
 | `templates/md.html` | Template para archivos .md (marked.js) |
 | `templates/toolbar.html` | Toolbar compartido (breadcrumb, botones editar/guardar, modal directorios) |
 | `templates/dir.html` | (no se usa activamente, la vista de directorio se genera inline) |
@@ -25,9 +26,16 @@ El handler clasifica cada request en este orden:
 1. **`/static/*`** → sirve archivos propios de filex (JS, CSS, imágenes) con MIME type fijo.
 2. **Directorio** → si `?format=json` devuelve JSON para el modal; si no, HTML mínimo con toolbar.
 3. **`.md`** → renderiza con `render_md()` (marked.js + editor texto plano).
-4. **`text_key in TEXT_EXTENSIONS`** → renderiza con `render_code()` (highlight.js + Ace editor).
-5. **Extension multimedia** → sirve binario con MIME type (png, mp4, etc.).
-6. **Fallback** → `application/octet-stream` (descarga).
+4. **`.csv`** → renderiza con `render_csv()` (PapaParse → tabla HTML).
+5. **`text_key in TEXT_EXTENSIONS`** → renderiza con `render_code()` (highlight.js + Ace editor).
+6. **Extension multimedia** → sirve binario con MIME type (png, mp4, etc.).
+7. **Fallback** → `application/octet-stream` (descarga).
+
+## CSV rendering
+
+`.csv` files get their own dispatch before the generic code path. The template `templates/csv.html` uses **PapaParse** CDN to parse CSV client-side into an HTML table with sticky headers, alternating row colors, and row count info.
+
+Added extensions: `.csv`, `.log`.
 
 ## Los 3 diccionarios clave
 

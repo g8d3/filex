@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{{title}}</title>
+<link rel="stylesheet" href="/static/style.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4/dist/css/tabulator.min.css" />
+<style>
+.csv-controls {
+  background: #f4f6fa;
+  border-bottom: 1px solid #d0d5e0;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+.csv-controls .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.csv-controls label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #444;
+  white-space: nowrap;
+}
+.csv-controls input, .csv-controls select, .csv-controls textarea {
+  padding: 3px 6px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 13px;
+  background: #fff;
+}
+.csv-controls input { min-width: 160px; }
+.csv-sep {
+  height: 0;
+  border: none;
+  border-top: 1px solid #d0d5e0;
+  margin: 6px 0;
+}
+.csv-controls .csv-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 6px;
+  align-items: center;
+  padding: 3px 0;
+}
+.csv-cols-label {
+  font-weight: 600;
+  color: #1a1a2e;
+  font-size: 11px;
+  margin-right: 2px;
+  user-select: none;
+  white-space: nowrap;
+}
+.csv-controls .csv-cols label {
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  padding: 1px 4px;
+  border: 1px solid #d0d5e0;
+  border-radius: 3px;
+  background: #fff;
+  line-height: 1.4;
+}
+.csv-controls .csv-cols label:hover { background: #e8ecf5; }
+.csv-controls .csv-cols label input { margin: 0; }
+.csv-controls .csv-cols .toggle-all {
+  color: #1a1a2e;
+  background: #e0e7ff;
+  border-color: #b0b8d0;
+}
+
+/* SQL console */
+.csv-sql-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1a1a2e;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.csv-sql-toggle:hover { color: #2a2a50; }
+.csv-sql-body {
+  display: none;
+  padding: 8px 0;
+}
+.csv-sql-body.open { display: block; }
+.csv-sql-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 60px;
+  font-family: monospace;
+  font-size: 12px;
+  resize: vertical;
+  padding: 6px 8px;
+}
+.csv-sql-body .sql-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.csv-sql-body .sql-actions button {
+  padding: 4px 14px;
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.csv-sql-body .sql-actions button:hover { background: #2a2a50; }
+.csv-sql-body .sql-actions .sql-status {
+  font-size: 12px;
+  color: #888;
+}
+.csv-sql-body .sql-actions .sql-error {
+  color: #c33;
+  font-size: 12px;
+  flex: 1;
+}
+
+/* Operation log */
+.csv-log-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0;
+}
+.csv-log-btn {
+  padding: 2px 10px;
+  font-size: 11px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  color: #444;
+}
+.csv-log-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+.csv-log-btn:hover { background: #e0e4f0; }
+.csv-log-btn.active:hover { background: #2a2a50; }
+.csv-log-count { font-size: 11px; color: #999; }
+
+#csv-table { margin: 0; }
+.tabulator { border: none !important; }
+.tabulator .tabulator-header { background: #1a1a2e !important; color: #fff !important; }
+.tabulator .tabulator-header .tabulator-col { background: #1a1a2e !important; }
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 6px 8px !important; }
+.tabulator .tabulator-header .tabulator-col .tabulator-col-title { color: #fff; font-weight: 600; font-size: 13px; }
+.tabulator .tabulator-header .tabulator-col .tabulator-arrow { border-bottom-color: #888 !important; }
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover { background: #2a2a50 !important; }
+.tabulator .tabulator-tableholder .tabulator-table .tabulator-row { min-height: 32px; }
+.tabulator .tabulator-tableholder .tabulator-table .tabulator-row .tabulator-cell {
+  padding: 4px 8px;
+  border-right: 1px solid #e0e0e0;
+  font-size: 13px;
+}
+.tabulator .tabulator-tableholder .tabulator-table .tabulator-row:nth-child(even) { background: #f0f4ff; }
+.tabulator .tabulator-tableholder .tabulator-table .tabulator-row:hover { background: #dce4f5; }
+.tabulator .tabulator-footer { background: #f4f6fa !important; border-top: 1px solid #d0d5e0 !important; }
+.tabulator .tabulator-footer .tabulator-page-counter { font-size: 12px; color: #666; }
+.tabulator .tabulator-footer .tabulator-paginator label { font-size: 12px; color: #666; }
+.tabulator .tabulator-footer .tabulator-page {
+  padding: 3px 8px !important;
+  border-radius: 3px !important;
+  font-size: 12px !important;
+}
+.tabulator .tabulator-footer .tabulator-page.active { background: #1a1a2e !important; color: #fff !important; }
+@media (max-width: 600px) {
+  .csv-controls { padding: 6px 10px; }
+  .csv-controls .row.ctrl-row { gap: 4px 8px; }
+  .csv-controls .row.ctrl-row label { font-size: 12px; gap: 2px; }
+  .csv-controls .row.ctrl-row select { font-size: 11px; padding: 2px 4px; max-width: 70px; }
+  .csv-controls .row.ctrl-row input { font-size: 12px; padding: 3px 5px; }
+  .search-wrap { flex: 1 1 100%; min-width: 0; }
+  .search-wrap input { width: 100%; min-width: 0; box-sizing: border-box; }
+  .csv-controls .csv-cols { gap: 1px 4px; padding: 2px 0; }
+  .csv-controls .csv-cols label { font-size: 10px; padding: 1px 3px; }
+}
+</style>
+</head>
+<body>
+{{toolbar_html}}
+<div class="csv-controls">
+  <div class="row ctrl-row">
+    <label class="search-wrap">🔍 <input id="csv-search" placeholder="Search all columns..." /></label>
+    <label>Group: <select id="csv-group"><option value="">None</option></select></label>
+    <label>Page: <select id="csv-page-size"><option value="10">10</option><option value="25">25</option><option value="50" selected>50</option><option value="100">100</option><option value="200">200</option></select></label>
+    <label>Calc: <select id="csv-calc"><option value="">None</option><option value="sum">Sum</option><option value="avg">Avg</option><option value="min">Min</option><option value="max">Max</option><option value="count">Count</option></select></label>
+    <label>Cols: <select id="csv-cols-per-row"><option value="0">All</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="6">6</option></select></label>
+    <label><span id="csv-mode-btn" class="mode-btn" style="cursor:pointer;padding:2px 8px;border:1px solid #bbb;border-radius:3px;font-size:12px;background:#e0e7ff;user-select:none">💻 Local</span></label>
+  </div>
+  <hr class="csv-sep" />
+  <div class="row csv-cols" id="csv-cols"><span class="csv-cols-label">Columns</span></div>
+  <hr class="csv-sep" />
+  <div>
+    <button class="csv-sql-toggle" id="csv-sql-toggle">▶ SQL Console</button>
+    <div class="csv-sql-body" id="csv-sql-body">
+      <textarea id="csv-sql-input" placeholder="SELECT * FROM data LIMIT 100">SELECT * FROM data LIMIT 100</textarea>
+      <div class="sql-actions">
+        <button id="csv-sql-run">▶ Run</button>
+        <span class="sql-status" id="csv-sql-status"></span>
+        <span class="sql-error" id="csv-sql-error"></span>
+      </div>
+    </div>
+    </div>
+  </div>
+  <hr class="csv-sep" />
+  <div class="csv-log-bar">
+    <button class="csv-log-btn" id="csv-log-btn">📋 Log</button>
+    <span class="csv-log-count" id="csv-log-count">0 ops</span>
+  </div>
+</div>
+<div id="csv-table"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4/dist/js/tabulator.min.js"></script>
+<script src="/static/filex.js"></script>
+<script>
+let table = null, showLog = false, baseSql = 'SELECT * FROM data', logEntries = [], allFields = [], mode = 'server', currentServerPage = 1, serverTotal = 0;
+
+function logEntry(source, message, sql) {
+  const t = new Date();
+  const time = t.toLocaleTimeString();
+  logEntries.push({ time, source, message, sql: sql || '' });
+  document.getElementById('csv-log-count').textContent = logEntries.length + ' ops';
+  if (showLog) renderLogTable();
+}
+
+function renderLogTable() {
+  const oldNav = document.getElementById('csv-server-nav');
+  if (oldNav) oldNav.remove();
+  const el = document.getElementById('csv-table');
+  el.innerHTML = '';
+  if (logEntries.length === 0) {
+    el.innerHTML = '<p style="margin:24px;color:#999;font-size:14px">📋 No operations yet</p>';
+    return;
+  }
+  table = new Tabulator(el, {
+    data: logEntries.map((e, i) => ({ id: i + 1, time: e.time, scope: e.source === 'SERVER' ? '☁️ Server' : '💻 Local', message: e.message, sql: e.sql })),
+    columns: [
+      { title: '#', field: 'id', width: 40, hozAlign: 'right' },
+      { title: 'Time', field: 'time', width: 80 },
+      { title: 'Scope', field: 'scope', width: 90 },
+      { title: 'SQL', field: 'sql', widthGrow: 2 },
+      { title: 'Description', field: 'message', widthGrow: 3 },
+    ],
+    layout: 'fitColumns',
+    pagination: 'local',
+    paginationSize: parseInt(document.getElementById('csv-page-size').value),
+  });
+}
+
+async function buildTable(fields, sqlHint) {
+  const oldNav = document.getElementById('csv-server-nav');
+  if (oldNav) oldNav.remove();
+  const el = document.getElementById('csv-table');
+  el.innerHTML = '';
+  showLog = false;
+  document.getElementById('csv-log-btn').classList.remove('active');
+  allFields = fields || [];
+  const size = parseInt(document.getElementById('csv-page-size').value);
+  const cols = fields.map(f => ({ title: f, field: f, headerFilter: mode !== 'server', headerFilterPlaceholder: 'filter...' }));
+  if (mode === 'server') {
+    const result = await fetchServerPage(1);
+    const total = result.total;
+    logEntry('SERVER', 'Page 1 (' + result.data.length + ' of ' + total + ' rows, ' + fields.length + ' cols)', sqlHint || '');
+    table = new Tabulator(el, {
+      columns: cols, layout: 'fitColumns', movableColumns: true,
+      pagination: false, data: result.data || [],
+      dataSorted: function(s, r) { if (s && s.length && mode === 'server') logEntry('SERVER', 'Sort: ' + s[0].column + ' ' + s[0].dir); },
+      dataFiltered: function(f, r) { if (mode === 'server') logEntry('SERVER', 'Filter: ' + (f.length ? f.map(x => x.field + '=' + x.value).join(', ') : 'cleared')); },
+    });
+    currentServerPage = 1; serverTotal = total;
+    addServerPageNav();
+  } else {
+    const result = await fetchServerPage(1);
+    currentServerPage = 1; serverTotal = result.total;
+    logEntry('CLIENT', 'Page 1 (' + result.data.length + ' of ' + result.total + ' rows, ' + fields.length + ' cols)', sqlHint || '');
+    table = new Tabulator(el, {
+      columns: cols, layout: 'fitColumns', movableColumns: true,
+      data: result.data || [],
+      dataSorted: function(s, r) { if (s && s.length && mode === 'client') logEntry('CLIENT', 'Sort: ' + s[0].column + ' ' + s[0].dir); },
+      dataFiltered: function(f, r) { if (mode === 'client') logEntry('CLIENT', 'Filter: ' + (f.length ? f.map(x => x.field + '=' + x.value).join(', ') : 'cleared')); },
+    });
+    addServerPageNav();
+  }
+  setTimeout(() => setColWidths(parseInt(document.getElementById('csv-cols-per-row').value)), 100);
+}
+
+async function initFromSql(sql) {
+  baseSql = sql || 'SELECT * FROM data';
+  try {
+    // Get columns via LIMIT 0
+    const metaResp = await fetch('?format=sql&q=' + encodeURIComponent('SELECT * FROM (' + baseSql + ') LIMIT 0'));
+    const metaCsv = await metaResp.text();
+    const metaParsed = Papa.parse(metaCsv, { header: true, skipEmptyLines: true });
+    const fields = metaParsed.meta && metaParsed.meta.fields ? metaParsed.meta.fields : [];
+    if (fields.length === 0) {
+      document.getElementById('csv-table').innerHTML = '<p style="margin:24px;color:#999;font-size:14px">📊 No CSV data</p>';
+      return;
+    }
+    populateHeaders(fields);
+    await buildTable(fields, sql);
+  } catch (e) {
+    document.getElementById('csv-table').innerHTML = '<p style="margin:24px;color:#999;font-size:14px">❌ ' + e.message + '</p>';
+  }
+}
+
+async function fetchServerPage(page, sortBy, sortDir, search) {
+  let sql = baseSql;
+  if (search) {
+    const conds = allFields.map(f => 'CAST(' + f + ' AS TEXT) ILIKE \'%' + search.replace(/'/g, "''") + '%\'');
+    sql = 'SELECT * FROM (' + baseSql + ') WHERE ' + conds.join(' OR ');
+  }
+  if (sortBy) {
+    sql = 'SELECT * FROM (' + sql + ') ORDER BY ' + sortBy + ' ' + (sortDir || 'ASC');
+  }
+  const size = parseInt(document.getElementById('csv-page-size').value);
+  // Use server pagination params to get X-Total-Rows
+  const resp = await fetch(window.location.pathname + '?format=sql&q=' + encodeURIComponent(sql) + '&page=' + page + '&size=' + size);
+  const csv = await resp.text();
+  const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+  serverTotal = parseInt(resp.headers.get('X-Total-Rows')) || parsed.data.length;
+  const lastPage = Math.max(1, Math.ceil(serverTotal / size));
+  return { data: parsed.data || [], page: page, lastPage: lastPage, total: serverTotal };
+}
+
+function reloadServerTable(page, sortBy, sortDir, search) {
+  const el = document.getElementById('csv-table');
+  const size = parseInt(document.getElementById('csv-page-size').value);
+  fetchServerPage(page || 1, sortBy, sortDir, search).then(result => {
+    currentServerPage = result.page; serverTotal = result.total;
+    const cols = allFields.map(f => ({ title: f, field: f }));
+    el.innerHTML = '';
+    const source = mode === 'server' ? 'SERVER' : 'CLIENT';
+    table = new Tabulator(el, {
+      columns: cols, data: result.data, layout: 'fitColumns',
+      movableColumns: true, pagination: false,
+      dataSorted: function(s, r) { if (s && s.length) logEntry(source, (mode === 'server' ? 'Sort (page): ' : 'Sort: ') + s[0].column + ' ' + s[0].dir); },
+      dataFiltered: function(f, r) { logEntry(source, (mode === 'server' ? 'Filter (page): ' : 'Filter: ') + (f.length ? f.map(x => x.field + '=' + x.value).join(', ') : 'cleared')); },
+    });
+    addServerPageNav();
+  });
+}
+
+// --- Controls ---
+function populateHeaders(headers) {
+  const groupSel = document.getElementById('csv-group');
+  const colsDiv = document.getElementById('csv-cols');
+  colsDiv.innerHTML = '<span class="csv-cols-label">Columns</span>';
+  const toggleLbl = document.createElement('label');
+  toggleLbl.className = 'toggle-all';
+  const toggleCb = document.createElement('input');
+  toggleCb.type = 'checkbox'; toggleCb.checked = true; toggleCb.id = 'csv-toggle-all';
+  toggleLbl.appendChild(toggleCb); toggleLbl.appendChild(document.createTextNode('All'));
+  colsDiv.appendChild(toggleLbl);
+  headers.forEach(h => {
+    const opt = document.createElement('option'); opt.value = h; opt.textContent = h;
+    groupSel.appendChild(opt);
+    const lbl = document.createElement('label');
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.dataset.field = h;
+    lbl.appendChild(cb); lbl.appendChild(document.createTextNode(h));
+    colsDiv.appendChild(lbl);
+  });
+}
+
+function setColWidths(n) {
+  if (!table) return;
+  const cols = table.getColumns().filter(c => c.isVisible());
+  const box = document.getElementById('csv-table').getBoundingClientRect();
+  if (n === 0) { table.setLayout('fitColumns'); cols.forEach(c => c.setWidth(false)); }
+  else { const w = Math.max(40, Math.floor(box.width / n) - 1); cols.forEach(c => c.setWidth(w)); }
+  table.redraw();
+}
+function recalcWidths() { const n = parseInt(document.getElementById('csv-cols-per-row').value); setTimeout(() => setColWidths(n), 10); }
+
+function attachEvents() {
+  document.getElementById('csv-search').addEventListener('input', function() {
+    if (!table || showLog) return;
+    if (mode === 'server') { reloadServerTable(1, null, null, this.value.trim()); logEntry('SERVER', 'Search (remote): "' + this.value.trim() + '"'); return; }
+    const val = this.value.trim();
+    if (!val) { table.clearFilter(); logEntry('CLIENT', 'Cleared all filters'); }
+    else { table.setFilter((d) => Object.values(d).some(v => String(v).toLowerCase().includes(val.toLowerCase()))); logEntry('CLIENT', 'Search: "' + val + '"'); }
+  });
+  document.getElementById('csv-group').addEventListener('change', function() {
+    if (!table || showLog) return;
+    if (mode === 'server') { reloadServerTable(1, this.value, this.value ? 'ASC' : null, document.getElementById('csv-search').value.trim()); logEntry('SERVER', this.value ? 'Group (remote): ' + this.value : 'Group: none'); return; }
+    table.setGroupBy(this.value || false);
+    logEntry('CLIENT', this.value ? 'Group: ' + this.value : 'Group: none');
+  });
+  document.getElementById('csv-page-size').addEventListener('change', function() {
+    if (!table) return;
+    if (mode === 'server') { reloadServerTable(1, null, null, document.getElementById('csv-search').value.trim()); logEntry('SERVER', 'Page size (remote): ' + this.value); return; }
+    table.setPageSize(parseInt(this.value));
+    logEntry('CLIENT', 'Page size: ' + this.value);
+  });
+  document.getElementById('csv-cols-per-row').addEventListener('change', function() {
+    if (!table || showLog) return;
+    setColWidths(parseInt(this.value));
+    logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', this.value === '0' ? 'Cols per row: All' : 'Cols per row: ' + this.value);
+  });
+  document.getElementById('csv-calc').addEventListener('change', function() {
+    if (!table || showLog) return;
+    if (mode === 'server') { logEntry('SERVER', 'Calculation (local page only): ' + this.value); }
+    this.value ? (table.setColumnCalc(this.value), logEntry('CLIENT', 'Calculation: ' + this.value)) : (table.setColumnCalc(false), logEntry('CLIENT', 'Calculations: none'));
+  });
+  document.getElementById('csv-cols').addEventListener('change', function(e) {
+    if (!table || showLog || e.target.type !== 'checkbox') return;
+    if (e.target.id === 'csv-toggle-all') {
+      const checked = e.target.checked;
+      let count = 0;
+      this.querySelectorAll('input[data-field]').forEach(cb => { cb.checked = checked; checked ? table.showColumn(cb.dataset.field) : table.hideColumn(cb.dataset.field); count++; });
+      logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', checked ? 'Showed all ' + count + ' columns' : 'Hid all ' + count + ' columns');
+      recalcWidths();
+    } else if (e.target.dataset.field) {
+      e.target.checked ? table.showColumn(e.target.dataset.field) : table.hideColumn(e.target.dataset.field);
+      logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', (e.target.checked ? 'Showed' : 'Hid') + ' column: ' + e.target.dataset.field);
+      recalcWidths();
+    }
+  });
+}
+
+// Restore mode from localStorage
+const savedMode = localStorage.getItem('csv_mode') || 'server';
+mode = savedMode;
+document.getElementById('csv-mode-btn').textContent = mode === 'server' ? '☁️ Server' : '💻 Local';
+document.getElementById('csv-mode-btn').style.background = mode === 'server' ? '#fce8e8' : '#e0e7ff';
+
+// --- Init ---
+(async function() {
+  const urlSql = new URLSearchParams(window.location.search).get('sql');
+  await initFromSql(urlSql || 'SELECT * FROM data');
+  attachEvents();
+})();
+
+// --- SQL Console ---
+document.getElementById('csv-sql-toggle').addEventListener('click', function() {
+  const body = document.getElementById('csv-sql-body');
+  body.classList.toggle('open');
+  this.textContent = body.classList.contains('open') ? '▼ SQL Console' : '▶ SQL Console';
+});
+
+document.getElementById('csv-sql-run').addEventListener('click', async function() {
+  const input = document.getElementById('csv-sql-input');
+  const status = document.getElementById('csv-sql-status');
+  const error = document.getElementById('csv-sql-error');
+  const query = input.value.trim();
+
+  if (!query) { error.textContent = 'Enter a SQL query'; return; }
+
+  status.textContent = '⏳ Running...';
+  error.textContent = '';
+
+  document.getElementById('csv-cols').innerHTML = '<span class="csv-cols-label">Columns</span>';
+  document.getElementById('csv-group').innerHTML = '<option value="">None</option>';
+  try {
+    baseSql = query;
+    await initFromSql(query);
+    status.textContent = '✅ Done';
+  } catch (e) {
+    error.textContent = '❌ ' + e.message;
+    logEntry('SERVER', 'SQL error: ' + e.message, query);
+    status.textContent = '';
+  }
+});
+
+// --- Log toggle ---
+document.getElementById('csv-log-btn').addEventListener('click', function() {
+  showLog = !showLog;
+  this.classList.toggle('active');
+  if (showLog) {
+    renderLogTable();
+  } else if (allFields.length) {
+    buildTable(allFields);
+    setTimeout(() => setColWidths(parseInt(document.getElementById('csv-cols-per-row').value)), 200);
+  }
+});
+
+// --- Mode toggle ---
+document.getElementById('csv-mode-btn').addEventListener('click', function() {
+  mode = mode === 'client' ? 'server' : 'client';
+  localStorage.setItem('csv_mode', mode);
+  this.textContent = mode === 'server' ? '☁️ Server' : '💻 Local';
+  this.style.background = mode === 'server' ? '#fce8e8' : '#e0e7ff';
+  logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', 'Switched to ' + mode + ' mode');
+  if (allFields.length) buildTable(allFields);
+});
+
+// Server pagination via custom buttons injected after table build
+function addServerPageNav() {
+  const existing = document.getElementById('csv-server-nav');
+  if (existing) existing.remove();
+  const size = parseInt(document.getElementById('csv-page-size').value);
+  const last = Math.max(1, Math.ceil(serverTotal / size));
+  const nav = document.createElement('div');
+  nav.id = 'csv-server-nav';
+  nav.style.cssText = 'display:flex;gap:6px;align-items:center;justify-content:center;padding:6px;font-size:12px;color:#555;background:#f4f6fa;border-top:1px solid #d0d5e0';
+  nav.innerHTML = '<button class="srv-page" data-p="1" style="padding:2px 8px;border:1px solid #bbb;border-radius:3px;background:#fff;cursor:pointer">««</button>' +
+    '<button class="srv-page" data-p="' + Math.max(1, currentServerPage - 1) + '" style="padding:2px 8px;border:1px solid #bbb;border-radius:3px;background:#fff;cursor:pointer">«</button>' +
+    '<span id="csv-page-info" style="padding:0 6px">' + currentServerPage + ' / ' + last + '</span>' +
+    '<button class="srv-page" data-p="' + Math.min(last, currentServerPage + 1) + '" style="padding:2px 8px;border:1px solid #bbb;border-radius:3px;background:#fff;cursor:pointer">»</button>' +
+    '<button class="srv-page" data-p="' + last + '" style="padding:2px 8px;border:1px solid #bbb;border-radius:3px;background:#fff;cursor:pointer">»»</button>';
+  document.getElementById('csv-table').after(nav);
+    nav.querySelectorAll('.srv-page').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const p = parseInt(this.dataset.p);
+      if (p < 1 || p > last) return;
+      currentServerPage = p;
+      const search = document.getElementById('csv-search').value.trim();
+      const group = document.getElementById('csv-group').value;
+      logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', 'Page ' + p + ' of ' + last);
+      reloadServerTable(p, group || null, group ? 'ASC' : null, search);
+    });
+  });
+}
+
+
+</script>
+</body>
+</html>

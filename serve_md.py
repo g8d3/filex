@@ -6,8 +6,11 @@ import os
 import re
 import html
 import json
+import csv
+import io
 import urllib.parse
 from datetime import datetime
+import duckdb
 
 ROOT_NAME = "/"
 
@@ -24,12 +27,13 @@ DIR_TMPL = load_tmpl("dir.html")
 MD_TMPL = load_tmpl("md.html")
 CODE_TMPL = load_tmpl("code.html")
 TOOLBAR_TMPL = load_tmpl("toolbar.html")
+CSV_TMPL = load_tmpl("csv.html")
 
 
 # Extensiones de archivos de código/texto que se renderizan con el template code.html
 # Se compara contra la extensión y, si está vacía, contra el nombre completo
 TEXT_EXTENSIONS = {
-    ".txt", ".py", ".sh", ".bash", ".zsh", ".rb", ".go", ".rs",
+    ".txt", ".csv", ".log", ".py", ".sh", ".bash", ".zsh", ".rb", ".go", ".rs",
     ".js", ".jsx", ".ts", ".tsx", ".c", ".h", ".cpp", ".hpp", ".cc",
     ".java", ".kt", ".scala", ".swift", ".r", ".m", ".mm",
     ".yaml", ".yml", ".toml", ".json", ".xml", ".sql",
@@ -48,6 +52,8 @@ LANG_MAP = {
     ".py": "python",
     ".sh": "bash", ".bash": "bash", ".zsh": "bash",
     ".txt": "plaintext",
+    ".csv": "plaintext",
+    ".log": "plaintext",
     ".rb": "ruby",
     ".go": "go",
     ".rs": "rust",
@@ -188,6 +194,14 @@ def render_code(text, text_key, path, full):
         .replace("{{json_content}}", safe_content)\
         .replace("{{json_language}}", safe_lang)\
         .replace("{{json_ace_lang}}", safe_ace)
+
+
+def render_csv(path, full):
+    title = os.path.basename(full)
+    bc = breadcrumb_code(path, full)
+    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+    return CSV_TMPL.replace("{{title}}", title)\
+        .replace("{{toolbar_html}}", toolbar)
 
 
 def breadcrumb_html(path):
@@ -353,6 +367,53 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 with open(full, "r") as f:
                     text = f.read()
                 html = render_md(text, path, full)
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(html.encode("utf-8"))
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        if ext == ".csv":
+            fmt = qs.get("format", [None])[0]
+            if fmt == "sql":
+                query = qs.get("q", [None])[0]
+                if not query:
+                    self.send_error(400, "Missing 'q' parameter")
+                    return
+                try:
+                    conn = duckdb.connect()
+                    conn.execute(f"CREATE VIEW data AS SELECT * FROM read_csv_auto('{full}')")
+                    page = qs.get("page", [None])[0]
+                    size = qs.get("size", [None])[0]
+                    if page and size:
+                        page = int(page)
+                        size = int(size)
+                        total = conn.execute(f"SELECT COUNT(*) FROM ({query})").fetchone()[0]
+                        paginated = f"SELECT * FROM ({query}) LIMIT {size} OFFSET {(page-1)*size}"
+                        result = conn.execute(paginated)
+                    else:
+                        result = conn.execute(query)
+                    columns = [desc[0] for desc in result.description]
+                    rows = result.fetchall()
+                    conn.close()
+                    buf = io.StringIO()
+                    csvw = csv.writer(buf)
+                    csvw.writerow(columns)
+                    csvw.writerows(rows)
+                    csv_data = buf.getvalue()
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/csv; charset=utf-8")
+                    if page and size:
+                        self.send_header("X-Total-Rows", str(total))
+                    self.end_headers()
+                    self.wfile.write(csv_data.encode("utf-8"))
+                except Exception as e:
+                    self.send_error(500, str(e))
+                return
+            try:
+                html = render_csv(path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
