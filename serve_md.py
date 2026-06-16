@@ -28,6 +28,7 @@ MD_TMPL = load_tmpl("md.html")
 CODE_TMPL = load_tmpl("code.html")
 TOOLBAR_TMPL = load_tmpl("toolbar.html")
 CSV_TMPL = load_tmpl("csv.html")
+VIDEO_TMPL = load_tmpl("video.html")
 
 
 # Extensiones de archivos de código/texto que se renderizan con el template code.html
@@ -265,6 +266,75 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     root_dir = SCRIPT_DIR  # will be overridden after arg parse
     real_root = SCRIPT_DIR
 
+    def _serve_file_range(self, full, mime):
+        """Serve a file with Range request support for video seeking."""
+        file_size = os.path.getsize(full)
+        range_header = self.headers.get("Range")
+
+        if range_header:
+            # Parse Range: bytes=start-end
+            m = re.match(r"bytes=(\d+)-(\d*)", range_header)
+            if m:
+                start = int(m.group(1))
+                end = int(m.group(2)) if m.group(2) else file_size - 1
+                end = min(end, file_size - 1)
+                length = end - start + 1
+
+                self.send_response(206)
+                self.send_header("Content-type", mime)
+                self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+                self.send_header("Content-Length", str(length))
+                self.send_header("Accept-Ranges", "bytes")
+                self.end_headers()
+
+                with open(full, "rb") as f:
+                    f.seek(start)
+                    self.wfile.write(f.read(length))
+                return
+
+        # No Range header: serve full file
+        self.send_response(200)
+        self.send_header("Content-type", mime)
+        self.send_header("Content-Length", str(file_size))
+        self.send_header("Accept-Ranges", "bytes")
+        self.end_headers()
+
+        with open(full, "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+
+    def do_HEAD(self):
+        """Support HEAD requests for video preflight."""
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        if not os.path.isfile(full):
+            self.send_error(404)
+            return
+
+        ext = os.path.splitext(full)[1].lower()
+        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime"}
+        mime = video_exts.get(ext)
+        if mime:
+            file_size = os.path.getsize(full)
+            self.send_response(200)
+            self.send_header("Content-type", mime)
+            self.send_header("Content-Length", str(file_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.end_headers()
+        else:
+            self.send_response(200)
+            self.end_headers()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -449,25 +519,34 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             ".pdf": "application/pdf",
             ".svg": "image/svg+xml",
             ".ico": "image/x-icon",
-            ".mp4": "video/mp4",
-            ".webm": "video/webm",
-            ".ogg": "video/ogg",
-            ".mov": "video/quicktime",
             ".mp3": "audio/mpeg",
             ".wav": "audio/wav",
             ".flac": "audio/flac",
             ".opus": "audio/opus",
         }
 
-        mime = mime_map.get(ext)
-        if mime is not None:
+        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime"}
+        is_video = ext in video_exts
+
+        # Video: servir HTML wrapper con toolbar, a menos que ?raw=1
+        if is_video and not qs.get("raw", [None])[0]:
+            bc = breadcrumb_html(path)
+            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+            sep = "&" if parsed.query else "?"
+            video_src = self.path + sep + "raw=1"
+            title = os.path.basename(full)
+            page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", video_src)
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(page.encode("utf-8"))
+            return
+
+        # Video raw: servir binario con Range support
+        if is_video:
+            mime = video_exts.get(ext, "video/mp4")
             try:
-                with open(full, "rb") as f:
-                    data = f.read()
-                self.send_response(200)
-                self.send_header("Content-type", mime)
-                self.end_headers()
-                self.wfile.write(data)
+                self._serve_file_range(full, mime)
             except FileNotFoundError:
                 self.send_error(404, "File not found")
             except Exception as e:
