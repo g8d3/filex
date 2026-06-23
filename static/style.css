@@ -243,6 +243,38 @@ pre code.hljs {
 .dir-files-body .date-col {
   color: #888;
 }
+.dir-files-body .action-col {
+  width: 40px;
+  text-align: center;
+}
+.dir-files-body .action-col .del-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.dir-files-body .action-col .del-btn:hover {
+  opacity: 1;
+  background: #fee;
+}
+.dir-files-body .action-col .action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.dir-files-body .action-col .action-btn:hover {
+  opacity: 1;
+  background: #eef;
+}
 
 /* ===== Mobile fixes ===== */
 @media (max-width: 600px) {

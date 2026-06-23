@@ -322,7 +322,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         ext = os.path.splitext(full)[1].lower()
-        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime"}
+        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
         mime = video_exts.get(ext)
         if mime:
             file_size = os.path.getsize(full)
@@ -374,6 +374,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 ".mp3": "audio/mpeg",
                 ".wav": "audio/wav",
                 ".pdf": "application/pdf",
+                ".mkv": "video/x-matroska",
             }
             sext = os.path.splitext(safe)[1].lower()
             try:
@@ -405,7 +406,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     self.send_error(500, str(e))
                 return
-            # Viewing a directory: just show toolbar with empty content
+            # Viewing a directory: show toolbar with create/upload buttons
             bc = breadcrumb_html(path.rstrip("/") or "/")
             toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
             title = os.path.basename(path.rstrip("/")) if path != "/" else ROOT_NAME
@@ -419,6 +420,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 + toolbar +
                 '<p style="margin:24px;color:#999;font-size:14px">'
                 '📂 Navega por los directorios desde el breadcrumb.</p>'
+                '<script>showFileActions();</script>'
                 '</body></html>'
             )
             self.send_response(200)
@@ -436,6 +438,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r") as f:
                     text = f.read()
+                if qs.get("raw", [None])[0]:
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/markdown; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(text.encode("utf-8"))
+                    return
                 html = render_md(text, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
@@ -497,6 +505,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f:
                     text = f.read()
+                if qs.get("raw", [None])[0]:
+                    mime = "text/plain; charset=utf-8"
+                    if text_key == ".json":
+                        mime = "application/json; charset=utf-8"
+                    elif text_key == ".csv":
+                        mime = "text/csv; charset=utf-8"
+                    self.send_response(200)
+                    self.send_header("Content-type", mime)
+                    self.end_headers()
+                    self.wfile.write(text.encode("utf-8"))
+                    return
                 html_out = render_code(text, text_key, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
@@ -525,7 +544,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             ".opus": "audio/opus",
         }
 
-        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime"}
+        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
         is_video = ext in video_exts
 
         # Video: servir HTML wrapper con toolbar, a menos que ?raw=1
@@ -553,18 +572,66 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Fallback: cualquier otro archivo como descarga
+        # Fallback: abrir inline, descargar solo si ?dl=1
+        if qs.get("dl", [None])[0]:
+            try:
+                with open(full, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", "application/octet-stream")
+                self.send_header("Content-Disposition", f'attachment; filename="{os.path.basename(full)}"')
+                self.end_headers()
+                self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        # Intentar abrir como texto
         try:
-            with open(full, "rb") as f:
-                data = f.read()
+            file_size = os.path.getsize(full)
+            MAX_INLINE = 10 * 1024 * 1024  # 10 MB
+            if file_size > MAX_INLINE:
+                page = (
+                    '<!doctype html><html lang="es"><head>'
+                    '<meta charset="utf-8" />'
+                    f'<title>{html.escape(os.path.basename(full))}</title>'
+                    '<link rel="stylesheet" href="/static/style.css" />'
+                    '</head><body>'
+                    f'<p style="margin:24px;font-size:14px">'
+                    f'Archivo demasiado grande ({format_size(file_size)}). '
+                    f'<a href="{self.path}?dl=1">Descargar</a></p>'
+                    '</body></html>'
+                )
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(page.encode("utf-8"))
+                return
+            with open(full, "r", encoding="utf-8", errors="replace") as f:
+                text = f.read()
+            html_out = render_code(text, os.path.basename(full).lower(), path, full)
             self.send_response(200)
-            self.send_header("Content-type", "application/octet-stream")
+            self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(data)
+            self.wfile.write(html_out.encode("utf-8"))
         except FileNotFoundError:
             self.send_error(404, "File not found")
-        except Exception as e:
-            self.send_error(500, str(e))
+        except Exception:
+            # Si falla como texto, servir binario con Content-Disposition inline
+            try:
+                with open(full, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-type", "application/octet-stream")
+                self.send_header("Content-Disposition", "inline")
+                self.end_headers()
+                self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -594,6 +661,126 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/plain; charset=utf-8")
             self.end_headers()
             self.wfile.write(b"OK")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def do_PUT(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+
+            parent = os.path.dirname(full)
+            os.makedirs(parent, exist_ok=True)
+
+            exists = os.path.isfile(full)
+            with open(full, "wb") as f:
+                f.write(body)
+
+            if exists:
+                self.send_response(200)
+            else:
+                self.send_response(201)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"OK")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def do_MKCOL(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        if os.path.exists(full):
+            self.send_error(405, "Directory already exists")
+            return
+
+        try:
+            os.makedirs(full, exist_ok=False)
+            self.send_response(201)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Created")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        if not os.path.exists(full):
+            self.send_error(404, "Not found")
+            return
+
+        try:
+            if os.path.isdir(full):
+                import shutil
+                shutil.rmtree(full)
+            else:
+                os.remove(full)
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Deleted")
+        except Exception as e:
+            self.send_error(500, str(e))
+
+    def do_MOVE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        full = os.path.abspath(os.path.join(self.root_dir, path.lstrip("/")))
+        real = os.path.realpath(full)
+
+        if not (real.startswith(self.real_root) or full.startswith(self.root_dir)):
+            self.send_error(403)
+            return
+
+        if not os.path.exists(full):
+            self.send_error(404, "Not found")
+            return
+
+        dest = self.headers.get("Destination")
+        if not dest:
+            self.send_error(400, "Missing Destination header")
+            return
+
+        dest_parsed = urllib.parse.urlparse(dest)
+        dest_path = dest_parsed.path
+        dest_full = os.path.abspath(os.path.join(self.root_dir, dest_path.lstrip("/")))
+        dest_real = os.path.realpath(dest_full)
+
+        if not (dest_real.startswith(self.real_root) or dest_full.startswith(self.root_dir)):
+            self.send_error(403, "Destination outside root")
+            return
+
+        try:
+            dest_parent = os.path.dirname(dest_full)
+            os.makedirs(dest_parent, exist_ok=True)
+            os.rename(full, dest_full)
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Moved")
         except Exception as e:
             self.send_error(500, str(e))
 

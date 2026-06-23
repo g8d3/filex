@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/filex.js"></script>
+  <style>
+    .video-wrap {
+      max-width: 100%;
+      margin: 16px auto;
+      text-align: center;
+    }
+    .video-wrap video {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+<body>
+  {{toolbar_html}}
+  <div class="video-wrap">
+    <video src="{{video_src}}" controls autoplay></video>
+  </div>
+</body>
+</html>

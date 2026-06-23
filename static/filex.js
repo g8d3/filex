@@ -94,7 +94,7 @@ function renderModalRows() {
   });
   rows.innerHTML = '';
   if (sorted.length === 0) {
-    rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">(vacío)</td></tr>';
+    rows.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">(vacío)</td></tr>';
     return;
   }
   sorted.forEach(function(e) {
@@ -107,11 +107,16 @@ function renderModalRows() {
     var tr = document.createElement('tr');
     tr.className = cls;
     tr.style.cursor = 'pointer';
+    var safeHref = href.replace(/'/g, "\\'");
+    var dlBtn = e.is_dir ? '' : '<button class="action-btn" onclick="event.stopPropagation();window.location.href=\'' + safeHref + '?dl=1\'" title="Descargar">⬇</button>';
+    var renameBtn = '<button class="action-btn" onclick="event.stopPropagation();renameItem(\'' + safeHref + '\')" title="Renombrar">✏️</button>';
+    var delBtn = '<button class="del-btn" onclick="event.stopPropagation();deleteItem(\'' + safeHref + '\')" title="Eliminar">🗑</button>';
     if (e.is_dir) {
       tr.innerHTML =
         '<td><a href="javascript:void(0)" data-dir="' + href + '" class="modal-dir-link">' + display.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col"></td>' +
-        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
+        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>' +
+        '<td class="action-col">' + dlBtn + renameBtn + delBtn + '</td>';
       tr.addEventListener('click', function() {
         showDirModal(href);
       });
@@ -119,7 +124,8 @@ function renderModalRows() {
       tr.innerHTML =
         '<td><a href="' + href + '">' + display.replace(/</g, '&lt;') + '</a></td>' +
         '<td class="size-col">' + e.size_fmt + '</td>' +
-        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>';
+        '<td class="date-col">' + e.date.replace(/</g, '&lt;') + '</td>' +
+        '<td class="action-col">' + dlBtn + renameBtn + delBtn + '</td>';
       tr.addEventListener('click', function() {
         window.location.href = href;
       });
@@ -180,7 +186,7 @@ function showDirModal(dir) {
       if (d) showDirModal(d);
     });
   });
-  rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#999">Cargando…</td></tr>';
+  rows.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">Cargando…</td></tr>';
   files.style.display = '';
   files.dataset.dirFiles = dir;
   var q = dir.indexOf('?') >= 0 ? '&format=json' : '?format=json';
@@ -199,9 +205,113 @@ function showDirModal(dir) {
       renderModalRows();
     })
     .catch(function(err) {
-      rows.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#c00">' + err.message + '</td></tr>';
+      rows.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#c00">' + err.message + '</td></tr>';
     });
 }
+// ===== File actions (create dir, upload) =====
+function getCurrentDir() {
+  var files = document.getElementById('dirFiles');
+  if (files && files.style.display !== 'none' && files.dataset.dirFiles) {
+    return files.dataset.dirFiles.replace(/\/+$/, '') + '/';
+  }
+  return window.location.pathname.replace(/\/+$/, '') + '/';
+}
+
+function createDir() {
+  var name = prompt('Nombre del nuevo directorio:');
+  if (!name) return;
+  var dir = getCurrentDir();
+  fetch(dir + encodeURIComponent(name) + '/', { method: 'MKCOL' })
+    .then(function(r) {
+      if (r.status === 201) {
+        showDirModal(dir);
+      } else {
+        return r.text().then(function(t) { alert('Error: ' + t); });
+      }
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function uploadFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var dir = getCurrentDir();
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    fetch(dir + encodeURIComponent(file.name), { method: 'PUT', body: e.target.result })
+      .then(function(r) {
+        if (r.status === 201 || r.status === 200) {
+          showDirModal(dir);
+        } else {
+          return r.text().then(function(t) { alert('Error: ' + t); });
+        }
+      })
+      .catch(function(e) { alert('Error: ' + e.message); });
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function showFileActions() {
+  var btn = document.getElementById('newDirBtn');
+  var upload = document.getElementById('uploadBtn');
+  if (btn) btn.style.display = '';
+  if (upload) upload.style.display = '';
+}
+
+function deleteItem(path) {
+  var name = path.split('/').filter(Boolean).pop() || path;
+  if (!confirm('¿Eliminar "' + name + '"?')) return;
+  fetch(path, { method: 'DELETE' })
+    .then(function(r) {
+      if (r.ok) {
+        var dir = path.substring(0, path.lastIndexOf('/')) + '/';
+        showDirModal(dir);
+      } else {
+        return r.text().then(function(t) { alert('Error: ' + t); });
+      }
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function downloadCurrent() {
+  var path = window.location.pathname;
+  window.location.href = path + (path.indexOf('?') >= 0 ? '&' : '?') + 'dl=1';
+}
+
+function deleteCurrent() {
+  var path = window.location.pathname;
+  var name = path.split('/').filter(Boolean).pop() || path;
+  if (!confirm('¿Eliminar "' + name + '"?')) return;
+  fetch(path, { method: 'DELETE' })
+    .then(function(r) {
+      if (r.ok) {
+        var dir = path.substring(0, path.lastIndexOf('/')) + '/';
+        window.location.href = dir;
+      } else {
+        return r.text().then(function(t) { alert('Error: ' + t); });
+      }
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
+function renameItem(path) {
+  var oldName = path.split('/').filter(Boolean).pop() || path;
+  var newName = prompt('Nuevo nombre para "' + oldName + '":', oldName);
+  if (!newName || newName === oldName) return;
+  var dir = path.substring(0, path.lastIndexOf('/') + 1);
+  var dest = dir + encodeURIComponent(newName);
+  fetch(path, { method: 'MOVE', headers: { 'Destination': dest } })
+    .then(function(r) {
+      if (r.ok) {
+        showDirModal(dir);
+      } else {
+        return r.text().then(function(t) { alert('Error: ' + t); });
+      }
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
 function closeDirModal() {
   var el = document.getElementById('dirFiles');
   if (el) el.style.display = 'none';
