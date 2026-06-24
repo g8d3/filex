@@ -232,6 +232,21 @@ function createDir() {
     .catch(function(e) { alert('Error: ' + e.message); });
 }
 
+function createFile() {
+  var name = prompt('Nombre del nuevo archivo:');
+  if (!name) return;
+  var dir = getCurrentDir();
+  fetch(dir + encodeURIComponent(name), { method: 'PUT', body: '' })
+    .then(function(r) {
+      if (r.status === 201 || r.status === 200) {
+        window.location.href = dir + encodeURIComponent(name);
+      } else {
+        return r.text().then(function(t) { alert('Error: ' + t); });
+      }
+    })
+    .catch(function(e) { alert('Error: ' + e.message); });
+}
+
 function uploadFile(input) {
   var file = input.files[0];
   if (!file) return;
@@ -253,9 +268,11 @@ function uploadFile(input) {
 }
 
 function showFileActions() {
-  var btn = document.getElementById('newDirBtn');
+  var fileBtn = document.getElementById('newFileBtn');
+  var dirBtn = document.getElementById('newDirBtn');
   var upload = document.getElementById('uploadBtn');
-  if (btn) btn.style.display = '';
+  if (fileBtn) fileBtn.style.display = '';
+  if (dirBtn) dirBtn.style.display = '';
   if (upload) upload.style.display = '';
 }
 

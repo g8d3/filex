@@ -3,8 +3,9 @@
       <div class="dir-files-header">
         <span class="dir-files-title" id="modalTitle"></span>
         <span style="flex:1"></span>
+        <button onclick="createFile()" class="tb-btn modal-action-btn" title="Nuevo archivo">+📄</button>
         <button onclick="createDir()" class="tb-btn modal-action-btn" title="Nuevo directorio">+📁</button>
-        <button onclick="document.getElementById('modalUpload').click()" class="tb-btn modal-action-btn" title="Subir archivo">+📄</button>
+        <button onclick="document.getElementById('modalUpload').click()" class="tb-btn modal-action-btn" title="Subir archivo">📤</button>
         <input type="file" id="modalUpload" style="display:none" onchange="uploadFile(this)">
         <button onclick="changeDirFontSize(-1)" class="tb-btn" title="Reducir fuente">A−</button>
         <button onclick="changeDirFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
@@ -30,8 +31,9 @@
       <button onclick="changeFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
       <span id="fontSizeLabel" style="font-size:12px;color:#888;min-width:32px;text-align:center"></span>
       <span class="toolbar-sep">|</span>
+      <button onclick="createFile()" id="newFileBtn" class="tb-btn" style="display:none" title="Nuevo archivo">+📄</button>
       <button onclick="createDir()" id="newDirBtn" class="tb-btn" style="display:none" title="Nuevo directorio">+📁</button>
-      <button onclick="document.getElementById('fileUpload').click()" id="uploadBtn" class="tb-btn" style="display:none" title="Subir archivo">+📄</button>
+      <button onclick="document.getElementById('fileUpload').click()" id="uploadBtn" class="tb-btn" style="display:none" title="Subir archivo">📤</button>
       <input type="file" id="fileUpload" style="display:none" onchange="uploadFile(this)">
       <button onclick="downloadCurrent()" id="downloadBtn" class="tb-btn" title="Descargar">⬇</button>
       <button onclick="deleteCurrent()" id="deleteBtn" class="tb-btn" title="Eliminar">🗑</button>
