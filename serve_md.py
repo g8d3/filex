@@ -527,7 +527,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Archivos multimedia → servir binario
+        # Media files → serve binary with correct MIME type
         mime_map = {
             ".png": "image/png",
             ".jpg": "image/jpeg",
@@ -545,10 +545,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         }
 
         video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
-        is_video = ext in video_exts
 
-        # Video: servir HTML wrapper con toolbar, a menos que ?raw=1
-        if is_video and not qs.get("raw", [None])[0]:
+        ext_mime = mime_map.get(ext) or video_exts.get(ext)
+        if ext_mime and ext not in (".html",):
+            try:
+                if ext in video_exts:
+                    self._serve_file_range(full, ext_mime)
+                else:
+                    with open(full, "rb") as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-type", ext_mime)
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
+        # Video: serve HTML wrapper with toolbar, unless ?raw=1
+        if ext in video_exts and not qs.get("raw", [None])[0]:
             bc = breadcrumb_html(path)
             toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
             sep = "&" if parsed.query else "?"
@@ -559,17 +577,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(page.encode("utf-8"))
-            return
-
-        # Video raw: servir binario con Range support
-        if is_video:
-            mime = video_exts.get(ext, "video/mp4")
-            try:
-                self._serve_file_range(full, mime)
-            except FileNotFoundError:
-                self.send_error(404, "File not found")
-            except Exception as e:
-                self.send_error(500, str(e))
             return
 
         # Fallback: abrir inline, descargar solo si ?dl=1
