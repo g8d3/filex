@@ -4,6 +4,12 @@
 
 Serve any directory as a browsable, interactive web app — no framework, no database, just Python.
 
+<p align="center">
+  <img src="screenshots/dir-listing.png" width="280" alt="Directory listing" />
+  <img src="screenshots/code-viewer.png" width="280" alt="Code viewer" />
+  <img src="screenshots/markdown-viewer.png" width="280" alt="Markdown renderer" />
+</p>
+
 ## Features
 
 - **Directory browser** — sortable columns (name, size, date), sticky breadcrumb navigation
@@ -57,6 +63,14 @@ Edit `filex.service` to change `--root`, `--port`, or `--bind`.
 - `marked.js` for Markdown rendering
 - `PapaParse` for CSV parsing
 - `duckdb` for CSV SQL queries
+
+## Regenerating screenshots
+
+```bash
+bash scripts/screenshots.sh
+```
+
+Requires: `agent-browser`, Chrome with CDP on port 9222.
 
 ## License
 

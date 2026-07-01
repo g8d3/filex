@@ -4,7 +4,7 @@
 import http.server
 import os
 import re
-import html
+import html as html_mod
 import json
 import csv
 import io
@@ -444,11 +444,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(text.encode("utf-8"))
                     return
-                html = render_md(text, path, full)
+                page = render_md(text, path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(html.encode("utf-8"))
+                self.wfile.write(page.encode("utf-8"))
             except Exception as e:
                 self.send_error(500, str(e))
             return
@@ -491,11 +491,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.send_error(500, str(e))
                 return
             try:
-                html = render_csv(path, full)
+                page = render_csv(path, full)
                 self.send_response(200)
                 self.send_header("Content-type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(html.encode("utf-8"))
+                self.wfile.write(page.encode("utf-8"))
             except Exception as e:
                 self.send_error(500, str(e))
             return
@@ -527,35 +527,63 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Media files → serve binary with correct MIME type
-        mime_map = {
-            ".png": "image/png",
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".gif": "image/gif",
-            ".webp": "image/webp",
-            ".html": "text/html; charset=utf-8",
-            ".pdf": "application/pdf",
-            ".svg": "image/svg+xml",
-            ".ico": "image/x-icon",
-            ".mp3": "audio/mpeg",
-            ".wav": "audio/wav",
-            ".flac": "audio/flac",
-            ".opus": "audio/opus",
+        # Image/audio/video MIME mapping
+        img_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"}
+        audio_exts = {".mp3", ".wav", ".flac", ".opus"}
+        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
+        media_mime = {
+            ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".gif": "image/gif", ".webp": "image/webp",
+            ".svg": "image/svg+xml", ".ico": "image/x-icon",
+            ".mp3": "audio/mpeg", ".wav": "audio/wav",
+            ".flac": "audio/flac", ".opus": "audio/opus",
+            **video_exts,
         }
 
-        video_exts = {".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg", ".mov": "video/quicktime", ".mkv": "video/x-matroska"}
+        is_video = ext in video_exts
+        is_image = ext in img_exts
+        is_media = ext in media_mime and ext != ".html"
 
-        ext_mime = mime_map.get(ext) or video_exts.get(ext)
-        if ext_mime and ext not in (".html",):
+        # Media: serve HTML wrapper with toolbar, unless ?raw=1
+        if is_media and not qs.get("raw", [None])[0]:
+            bc = breadcrumb_code(path, full)
+            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+            sep = "&" if parsed.query else "?"
+            media_src = self.path + sep + "raw=1"
+            title = os.path.basename(full)
+            if is_image:
+                page = (
+                    '<!doctype html><html lang="en"><head>'
+                    '<meta charset="utf-8" />'
+                    '<meta name="viewport" content="width=device-width,initial-scale=1" />'
+                    f'<title>{html_mod.escape(title)}</title>'
+                    '<link rel="stylesheet" href="/static/style.css" />'
+                    '<script src="/static/filex.js"></script>'
+                    '<style>.img-wrap{max-width:100%;margin:16px auto;text-align:center}'
+                    '.img-wrap img{max-width:100%;height:auto;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}</style>'
+                    '</head><body>'
+                    f'{toolbar}'
+                    f'<div class="img-wrap"><img src="{html_mod.escape(media_src)}" alt="{html_mod.escape(title)}" /></div>'
+                    '</body></html>'
+                )
+            else:
+                page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", media_src)
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(page.encode("utf-8"))
+            return
+
+        # Media raw: serve binary with correct MIME type
+        if is_media:
             try:
-                if ext in video_exts:
-                    self._serve_file_range(full, ext_mime)
+                if is_video:
+                    self._serve_file_range(full, media_mime[ext])
                 else:
                     with open(full, "rb") as f:
                         data = f.read()
                     self.send_response(200)
-                    self.send_header("Content-type", ext_mime)
+                    self.send_header("Content-type", media_mime[ext])
                     self.send_header("Content-Length", str(len(data)))
                     self.end_headers()
                     self.wfile.write(data)
@@ -563,20 +591,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "File not found")
             except Exception as e:
                 self.send_error(500, str(e))
-            return
-
-        # Video: serve HTML wrapper with toolbar, unless ?raw=1
-        if ext in video_exts and not qs.get("raw", [None])[0]:
-            bc = breadcrumb_html(path)
-            toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
-            sep = "&" if parsed.query else "?"
-            video_src = self.path + sep + "raw=1"
-            title = os.path.basename(full)
-            page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", video_src)
-            self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(page.encode("utf-8"))
             return
 
         # Fallback: abrir inline, descargar solo si ?dl=1
@@ -603,7 +617,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 page = (
                     '<!doctype html><html lang="es"><head>'
                     '<meta charset="utf-8" />'
-                    f'<title>{html.escape(os.path.basename(full))}</title>'
+                    f'<title>{html_mod.escape(os.path.basename(full))}</title>'
                     '<link rel="stylesheet" href="/static/style.css" />'
                     '</head><body>'
                     f'<p style="margin:24px;font-size:14px">'
