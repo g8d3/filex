@@ -5,10 +5,10 @@
 Serve any directory as a browsable, interactive web app — no framework, no database, just Python.
 
 <p align="center">
-  <img src="screenshots/dir-listing.png" width="260" alt="File browser modal" />
-  <img src="screenshots/csv-viewer.png" width="260" alt="CSV table viewer" />
-  <img src="screenshots/code-viewer.png" width="260" alt="Code viewer" />
-  <img src="screenshots/markdown-viewer.png" width="260" alt="Markdown renderer" />
+  <img src="screenshots/dir-listing.png" width="260" style="border:1px solid #ddd;border-radius:6px;margin:4px" alt="File browser modal" />
+  <img src="screenshots/csv-viewer.png" width="260" style="border:1px solid #ddd;border-radius:6px;margin:4px" alt="CSV table viewer" />
+  <img src="screenshots/code-viewer.png" width="260" style="border:1px solid #ddd;border-radius:6px;margin:4px" alt="Code viewer" />
+  <img src="screenshots/markdown-viewer.png" width="260" style="border:1px solid #ddd;border-radius:6px;margin:4px" alt="Markdown renderer" />
 </p>
 
 ## Features
