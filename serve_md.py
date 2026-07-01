@@ -192,9 +192,9 @@ def render_code(text, text_key, path, full):
     return CODE_TMPL.replace("{{title}}", os.path.basename(full))\
         .replace("{{toolbar_html}}", toolbar)\
         .replace("{{language}}", "language-" + lang)\
-        .replace("{{json_content}}", safe_content)\
         .replace("{{json_language}}", safe_lang)\
-        .replace("{{json_ace_lang}}", safe_ace)
+        .replace("{{json_ace_lang}}", safe_ace)\
+        .replace("{{json_content}}", safe_content)
 
 
 def render_csv(path, full):
