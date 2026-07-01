@@ -4,22 +4,39 @@
 set -euo pipefail
 OUT="${1:-../screenshots}"
 mkdir -p "$OUT"
+CDP="${CDP:-9222}"
+FONT_CLICKS="${FONT_CLICKS:-3}"
 
-echo "=== Screenshot 1: Directory listing ==="
-agent-browser --cdp 9222 set viewport 608 1080
-agent-browser --cdp 9222 open "http://localhost:9090/code"
-sleep 2
-agent-browser --cdp 9222 screenshot "$OUT/dir-listing.png"
+screenshot() {
+  local label="$1" url="$2" file="$3"
+  echo "=== $label ==="
+  agent-browser --cdp "$CDP" open "$url"
+  sleep 2
+  for _ in $(seq 1 "$FONT_CLICKS"); do
+    agent-browser --cdp "$CDP" click "A+" 2>/dev/null || true
+    sleep 0.5
+  done
+  agent-browser --cdp "$CDP" screenshot "$OUT/$file"
+}
 
-echo "=== Screenshot 2: Code viewer ==="
-agent-browser --cdp 9222 open "http://localhost:9090/code/filex/serve_md.py"
-sleep 2
-agent-browser --cdp 9222 screenshot "$OUT/code-viewer.png"
+echo "=== Setting viewport ==="
+agent-browser --cdp "$CDP" set viewport 608 1080
 
-echo "=== Screenshot 3: Markdown renderer ==="
-agent-browser --cdp 9222 open "http://localhost:9090/code/filex/README.md"
-sleep 2
-agent-browser --cdp 9222 screenshot "$OUT/markdown-viewer.png"
+screenshot "Screenshot 1: Directory listing" \
+  "http://localhost:9090/code" \
+  "dir-listing.png"
+
+screenshot "Screenshot 2: CSV viewer" \
+  "http://localhost:9090/code/web9-agent/old/low_code_repositories.csv" \
+  "csv-viewer.png"
+
+screenshot "Screenshot 3: Code viewer" \
+  "http://localhost:9090/code/filex/serve_md.py" \
+  "code-viewer.png"
+
+screenshot "Screenshot 4: Markdown renderer" \
+  "http://localhost:9090/code/filex/README.md" \
+  "markdown-viewer.png"
 
 echo "=== Done ==="
 ls -la "$OUT/"*.png
