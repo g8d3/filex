@@ -544,8 +544,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         is_image = ext in img_exts
         is_media = ext in media_mime and ext != ".html"
 
-        # Media: serve HTML wrapper with toolbar, unless ?raw=1
-        if is_media and not qs.get("raw", [None])[0]:
+        # Media: serve HTML wrapper with toolbar (browser navigation), raw binary otherwise (img tags)
+        accept = self.headers.get("Accept", "")
+        wants_html = "text/html" in accept or not accept
+        if is_media and wants_html and not qs.get("raw", [None])[0]:
             bc = breadcrumb_code(path, full)
             toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
             sep = "&" if parsed.query else "?"
