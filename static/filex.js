@@ -94,7 +94,7 @@ function renderModalRows() {
   });
   rows.innerHTML = '';
   if (sorted.length === 0) {
-    rows.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">(vacío)</td></tr>';
+    rows.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999">(empty)</td></tr>';
     return;
   }
   sorted.forEach(function(e) {
@@ -110,7 +110,7 @@ function renderModalRows() {
     var safeHref = href.replace(/'/g, "\\'");
     var dlBtn = e.is_dir ? '' : '<button class="action-btn" onclick="event.stopPropagation();window.location.href=\'' + safeHref + '?dl=1\'" title="Descargar">⬇</button>';
     var renameBtn = '<button class="action-btn" onclick="event.stopPropagation();renameItem(\'' + safeHref + '\')" title="Renombrar">✏️</button>';
-    var delBtn = '<button class="del-btn" onclick="event.stopPropagation();deleteItem(\'' + safeHref + '\')" title="Eliminar">🗑</button>';
+    var delBtn = '<button class="del-btn" onclick="event.stopPropagation();deleteItem(\'' + safeHref + '\')" title="Delete">🗑</button>';
     if (e.is_dir) {
       tr.innerHTML =
         '<td><a href="javascript:void(0)" data-dir="' + href + '" class="modal-dir-link">' + display.replace(/</g, '&lt;') + '</a></td>' +
@@ -278,7 +278,7 @@ function showFileActions() {
 
 function deleteItem(path) {
   var name = path.split('/').filter(Boolean).pop() || path;
-  if (!confirm('¿Eliminar "' + name + '"?')) return;
+  if (!confirm('Delete "' + name + '"?')) return;
   fetch(path, { method: 'DELETE' })
     .then(function(r) {
       if (r.ok) {
@@ -299,7 +299,7 @@ function downloadCurrent() {
 function deleteCurrent() {
   var path = window.location.pathname;
   var name = path.split('/').filter(Boolean).pop() || path;
-  if (!confirm('¿Eliminar "' + name + '"?')) return;
+  if (!confirm('Delete "' + name + '"?')) return;
   fetch(path, { method: 'DELETE' })
     .then(function(r) {
       if (r.ok) {

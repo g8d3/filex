@@ -16,9 +16,9 @@
         <table>
           <thead><tr>
             <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
-            <th onclick="sortModal('size')" class="size-col" style="cursor:pointer">Tamaño<span id="modalSortSize"></span></th>
+            <th onclick="sortModal('size')" class="size-col" style="cursor:pointer">Size<span id="modalSortSize"></span></th>
             <th onclick="sortModal('date')" class="date-col" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
-            <th class="action-col">Acción</th>
+            <th class="action-col">Action</th>
           </tr></thead>
           <tbody id="modalRows"></tbody>
         </table>
@@ -36,7 +36,7 @@
       <button onclick="document.getElementById('fileUpload').click()" id="uploadBtn" class="tb-btn" style="display:none" title="Subir archivo">📤</button>
       <input type="file" id="fileUpload" style="display:none" onchange="uploadFile(this)">
       <button onclick="downloadCurrent()" id="downloadBtn" class="tb-btn" title="Descargar">⬇</button>
-      <button onclick="deleteCurrent()" id="deleteBtn" class="tb-btn" title="Eliminar">🗑</button>
+      <button onclick="deleteCurrent()" id="deleteBtn" class="tb-btn" title="Delete">🗑</button>
       <button onclick="togglePrefs()" id="prefsBtn" class="tb-btn">⚙️</button>
       <span class="toolbar-sep">|</span>
       <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>

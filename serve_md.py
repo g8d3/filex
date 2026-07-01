@@ -31,8 +31,8 @@ CSV_TMPL = load_tmpl("csv.html")
 VIDEO_TMPL = load_tmpl("video.html")
 
 
-# Extensiones de archivos de código/texto que se renderizan con el template code.html
-# Se compara contra la extensión y, si está vacía, contra el nombre completo
+# File extensions rendered with the code.html template (highlight.js + Ace)
+# Matching: first by extension, then by full filename for extensionless files
 TEXT_EXTENSIONS = {
     ".txt", ".csv", ".log", ".py", ".sh", ".bash", ".zsh", ".rb", ".go", ".rs",
     ".js", ".jsx", ".ts", ".tsx", ".c", ".h", ".cpp", ".hpp", ".cc",
@@ -42,13 +42,13 @@ TEXT_EXTENSIONS = {
     ".lisp", ".clj", ".hs", ".ex", ".exs", ".erl",
     ".cfg", ".ini", ".conf", ".env", ".vue", ".svelte",
     ".tex", ".vim", ".dockerfile", ".makefile", ".gradle",
-    # Dotfiles y archivos sin extensión
+    # Dotfiles and extensionless files
     ".gitignore", ".dockerignore", ".editorconfig", ".gitattributes",
     ".gitmodules", ".env.example", ".python-version", ".nvmrc",
     "dockerfile", "makefile",
 }
 
-# Mapeo de extensión a lenguaje highlight.js
+# Extension → highlight.js language mapping
 LANG_MAP = {
     ".py": "python",
     ".sh": "bash", ".bash": "bash", ".zsh": "bash",
@@ -89,7 +89,7 @@ LANG_MAP = {
     ".dockerfile": "dockerfile",
     ".tex": "latex",
     ".vim": "vim",
-    # Dotfiles y archivos sin extensión
+    # Dotfiles and extensionless files
     ".gitignore": "plaintext",
     ".dockerignore": "plaintext",
     ".editorconfig": "ini",
@@ -350,7 +350,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(403)
             return
 
-        # Servir archivos estáticos (JS, CSS, imágenes del propio filex)
+        # Serve static files (filex's own JS, CSS, images)
         if path.startswith("/static/"):
             static_root = os.path.join(SCRIPT_DIR, "static")
             rel = path[len("/static/"):]
@@ -430,8 +430,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         ext = os.path.splitext(full)[1].lower()
-        # Para dotfiles (.gitignore, .env, etc.) y archivos sin extensión (Makefile),
-        # usar el nombre completo como clave de búsqueda
+        # For dotfiles (.gitignore, .env) and extensionless files (Makefile),
+        # use the full filename as lookup key
         text_key = ext if ext else os.path.basename(full).lower()
 
         if ext == ".md":
@@ -500,7 +500,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Archivos de código/texto → render con template + highlight.js
+        # Code/text files → render with template + highlight.js
         if text_key in TEXT_EXTENSIONS:
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f:
@@ -788,17 +788,67 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def install_service():
+    """Install filex as a systemd --user service."""
+    import shutil
+    service_path = os.path.expanduser("~/.config/systemd/user/filex.service")
+    os.makedirs(os.path.dirname(service_path), exist_ok=True)
+    bin_path = os.path.abspath(sys.argv[0])
+    content = f"""[Unit]
+Description=FileX — file server with Markdown rendering
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={bin_path} --root %h --port 9090 --bind 0.0.0.0
+Restart=always
+RestartSec=5
+WorkingDirectory=%h
+
+[Install]
+WantedBy=default.target
+"""
+    with open(service_path, "w") as f:
+        f.write(content)
+    print(f"Service file written to {service_path}")
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    subprocess.run(["systemctl", "--user", "enable", "--now", "filex"], check=False)
+    print("Service started. Open http://localhost:9090")
+
+
+def uninstall_service():
+    """Stop and remove the systemd service."""
+    service_path = os.path.expanduser("~/.config/systemd/user/filex.service")
+    subprocess.run(["systemctl", "--user", "stop", "filex"], check=False)
+    subprocess.run(["systemctl", "--user", "disable", "filex"], check=False)
+    if os.path.exists(service_path):
+        os.remove(service_path)
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    print("Service removed.")
+
+
 if __name__ == "__main__":
     import sys
+    import subprocess
     import argparse
     parser = argparse.ArgumentParser(description="File server with Markdown rendering")
-    parser.add_argument("--root", default=SCRIPT_DIR, help=f"Root directory to serve")
+    parser.add_argument("--root", default=os.getcwd(), help="Root directory to serve (default: current dir)")
     parser.add_argument("--port", type=int, default=9090, help="Port to listen on")
     parser.add_argument("--bind", default="0.0.0.0", help="Address to bind")
+    parser.add_argument("--install", action="store_true", help="Install as systemd --user service")
+    parser.add_argument("--uninstall", action="store_true", help="Remove systemd service")
     args = parser.parse_args()
+
+    if args.install:
+        install_service()
+        sys.exit(0)
+    if args.uninstall:
+        uninstall_service()
+        sys.exit(0)
+
     Handler.root_dir = os.path.abspath(args.root)
     Handler.real_root = os.path.realpath(Handler.root_dir)
     ROOT_NAME = os.path.basename(Handler.root_dir)
-    print(f"Sirviendo {Handler.root_dir} en http://{args.bind}:{args.port}")
+    print(f"Serving {Handler.root_dir} at http://{args.bind}:{args.port}")
     server = http.server.HTTPServer((args.bind, args.port), Handler)
     server.serve_forever()
