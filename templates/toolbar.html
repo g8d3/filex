@@ -3,21 +3,21 @@
       <div class="dir-files-header">
         <span class="dir-files-title" id="modalTitle"></span>
         <span style="flex:1"></span>
-        <button onclick="createFile()" class="tb-btn modal-action-btn" title="Nuevo archivo">+📄</button>
-        <button onclick="createDir()" class="tb-btn modal-action-btn" title="Nuevo directorio">+📁</button>
-        <button onclick="document.getElementById('modalUpload').click()" class="tb-btn modal-action-btn" title="Subir archivo">📤</button>
+        <button onclick="createFile()" class="tb-btn modal-action-btn" title="New file">+📄</button>
+        <button onclick="createDir()" class="tb-btn modal-action-btn" title="New directory">+📁</button>
+        <button onclick="document.getElementById('modalUpload').click()" class="tb-btn modal-action-btn" title="Upload file">📤</button>
         <input type="file" id="modalUpload" style="display:none" onchange="uploadFile(this)">
-        <button onclick="changeDirFontSize(-1)" class="tb-btn" title="Reducir fuente">A−</button>
-        <button onclick="changeDirFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
+        <button onclick="changeDirFontSize(-1)" class="tb-btn" title="Decrease font size">A−</button>
+        <button onclick="changeDirFontSize(1)" class="tb-btn" title="Increase font size">A+</button>
         <span id="dirFontSizeLabel" style="font-size:11px;color:#888;min-width:28px;text-align:center"></span>
         <button onclick="closeDirModal()" class="tb-btn" style="font-size:16px;line-height:1;margin-left:4px">✖</button>
       </div>
       <div class="dir-files-body">
         <table>
           <thead><tr>
-            <th onclick="sortModal('name')" style="cursor:pointer">Nombre<span id="modalSortName"></span></th>
+            <th onclick="sortModal('name')" style="cursor:pointer">Name<span id="modalSortName"></span></th>
             <th onclick="sortModal('size')" class="size-col" style="cursor:pointer">Size<span id="modalSortSize"></span></th>
-            <th onclick="sortModal('date')" class="date-col" style="cursor:pointer">Modificado<span id="modalSortDate"></span></th>
+            <th onclick="sortModal('date')" class="date-col" style="cursor:pointer">Modified<span id="modalSortDate"></span></th>
             <th class="action-col">Action</th>
           </tr></thead>
           <tbody id="modalRows"></tbody>
@@ -27,30 +27,30 @@
     <div class="breadcrumb" style="font-size:14px;margin-bottom:4px">{{breadcrumb}}</div>
     <div class="toolbar">
       <span style="flex:1"></span>
-      <button onclick="changeFontSize(-1)" class="tb-btn" title="Reducir fuente">A−</button>
-      <button onclick="changeFontSize(1)" class="tb-btn" title="Aumentar fuente">A+</button>
+      <button onclick="changeFontSize(-1)" class="tb-btn" title="Decrease font size">A−</button>
+      <button onclick="changeFontSize(1)" class="tb-btn" title="Increase font size">A+</button>
       <span id="fontSizeLabel" style="font-size:12px;color:#888;min-width:32px;text-align:center"></span>
       <span class="toolbar-sep">|</span>
-      <button onclick="createFile()" id="newFileBtn" class="tb-btn" style="display:none" title="Nuevo archivo">+📄</button>
-      <button onclick="createDir()" id="newDirBtn" class="tb-btn" style="display:none" title="Nuevo directorio">+📁</button>
-      <button onclick="document.getElementById('fileUpload').click()" id="uploadBtn" class="tb-btn" style="display:none" title="Subir archivo">📤</button>
+      <button onclick="createFile()" id="newFileBtn" class="tb-btn" style="display:none" title="New file">+📄</button>
+      <button onclick="createDir()" id="newDirBtn" class="tb-btn" style="display:none" title="New directory">+📁</button>
+      <button onclick="document.getElementById('fileUpload').click()" id="uploadBtn" class="tb-btn" style="display:none" title="Upload file">📤</button>
       <input type="file" id="fileUpload" style="display:none" onchange="uploadFile(this)">
-      <button onclick="downloadCurrent()" id="downloadBtn" class="tb-btn" title="Descargar">⬇</button>
+      <button onclick="downloadCurrent()" id="downloadBtn" class="tb-btn" title="Download">⬇</button>
       <button onclick="deleteCurrent()" id="deleteBtn" class="tb-btn" title="Delete">🗑</button>
       <button onclick="togglePrefs()" id="prefsBtn" class="tb-btn">⚙️</button>
       <span class="toolbar-sep">|</span>
-      <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Editar</button>
-      <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Guardar</button>
-      <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancelar</button>
+      <button onclick="toggleEdit()" id="editBtn" class="tb-btn">✏️ Edit</button>
+      <button onclick="saveFile()" id="saveBtn" class="tb-btn" style="display:none">💾 Save</button>
+      <button onclick="toggleEdit()" id="cancelBtn" class="tb-btn" style="display:none">✖ Cancel</button>
       <span id="saveMsg" style="font-size:13px;color:#888"></span>
     </div>
     <div id="prefsPanel" style="display:none">
       <label>
         <input type="checkbox" id="prefTableBorder" onchange="setPref('tableBorder', this.checked)">
-        Bordes tablas
+        Table borders
       </label>
       <label>
-        Celdas: <input type="range" id="prefPadding" min="2" max="16" value="6" onchange="setPref('cellPad', parseInt(this.value))">
+        Cell padding: <input type="range" id="prefPadding" min="2" max="16" value="6" onchange="setPref('cellPad', parseInt(this.value))">
         <span id="prefPaddingVal">6</span>px
       </label>
     </div>

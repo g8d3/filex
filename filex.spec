@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['/home/vuos/code/filex/serve_md.py'],
+    ['serve_md.py'],
     pathex=[],
     binaries=[],
     datas=[('templates', 'templates'), ('static', 'static')],

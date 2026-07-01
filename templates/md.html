@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -59,15 +59,15 @@
     async function saveFile() {
       var content = document.getElementById('mdContent').value;
       var btn = document.getElementById('saveBtn'), msg = document.getElementById('saveMsg');
-      btn.disabled = true; msg.textContent = 'Guardando…';
+      btn.disabled = true; msg.textContent = 'Saving…';
       try {
         var resp = await fetch(window.location.pathname, {
           method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: 'content=' + encodeURIComponent(content)
         });
-        if (resp.ok) { msg.textContent = '✓ Guardado — recargando…'; setTimeout(function() { location.reload(); }, 600); }
+        if (resp.ok) { msg.textContent = '✓ Saved — reloading…'; setTimeout(function() { location.reload(); }, 600); }
         else { msg.textContent = '✗ Error: ' + await resp.text(); btn.disabled = false; }
-      } catch(e) { msg.textContent = '✗ Error de red'; btn.disabled = false; }
+      } catch(e) { msg.textContent = '✗ Network error'; btn.disabled = false; }
     }
   </script>
 </body>
