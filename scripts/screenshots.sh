@@ -38,5 +38,10 @@ screenshot "Screenshot 4: Markdown renderer" \
   "http://localhost:9090/code/filex/README.md" \
   "markdown-viewer.png"
 
+echo "=== Adding border to screenshots ==="
+for f in "$OUT"/*.png; do
+  convert "$f" -bordercolor "#ddd" -border 1x1 "$f"
+done
+
 echo "=== Done ==="
 ls -la "$OUT/"*.png
