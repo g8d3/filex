@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/home/vuos/code/filex/dist/filex --root %h --port 9090 --bind 0.0.0.0
+ExecStart=%h/code/filex/dist/filex --root %h --port 9090 --bind 0.0.0.0
 Restart=always
 RestartSec=5
 WorkingDirectory=%h
