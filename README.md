@@ -1,5 +1,8 @@
 # filex
 
+[![Release](https://img.shields.io/github/v/release/g8d3/filex?style=flat-square)](https://github.com/g8d3/filex/releases)
+[![License](https://img.shields.io/github/license/g8d3/filex?style=flat-square)](https://github.com/g8d3/filex/blob/main/LICENSE)
+
 **Mobile-first file server** with Markdown rendering, code viewer/editor, CSV tables, and video streaming.
 
 Serve any directory as a browsable, interactive web app — no framework, no database, just Python.
