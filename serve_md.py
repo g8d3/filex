@@ -791,19 +791,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 def install_service():
     """Install filex as a systemd --user service."""
     import shutil
+    service_dir = os.path.expanduser("~/.local/bin")
+    os.makedirs(service_dir, exist_ok=True)
+    dst = os.path.join(service_dir, "filex")
+    src = os.path.abspath(sys.argv[0])
+    shutil.copy2(src, dst)
+    print(f"Installed binary to {dst}")
+
     service_path = os.path.expanduser("~/.config/systemd/user/filex.service")
     os.makedirs(os.path.dirname(service_path), exist_ok=True)
-    bin_path = os.path.abspath(sys.argv[0])
     content = f"""[Unit]
 Description=FileX — file server with Markdown rendering
 After=network.target
 
 [Service]
 Type=simple
-ExecStart={bin_path} --root %h --port 9090 --bind 0.0.0.0
+ExecStart=%h/.local/bin/filex --root %h --port 9090 --bind 0.0.0.0
 Restart=always
 RestartSec=5
 WorkingDirectory=%h
+Environment=FILEX_BIN=%h/.local/bin/filex
 
 [Install]
 WantedBy=default.target
@@ -814,6 +821,21 @@ WantedBy=default.target
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
     subprocess.run(["systemctl", "--user", "enable", "--now", "filex"], check=False)
     print("Service started. Open http://localhost:9090")
+
+
+def uninstall_service():
+    """Stop and remove the systemd service."""
+    service_path = os.path.expanduser("~/.config/systemd/user/filex.service")
+    subprocess.run(["systemctl", "--user", "stop", "filex"], check=False)
+    subprocess.run(["systemctl", "--user", "disable", "filex"], check=False)
+    if os.path.exists(service_path):
+        os.remove(service_path)
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    bin_path = os.path.expanduser("~/.local/bin/filex")
+    if os.path.exists(bin_path):
+        os.remove(bin_path)
+        print(f"Removed {bin_path}")
+    print("Service removed.")
 
 
 def uninstall_service():

@@ -4,10 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=%h/code/filex/dist/filex --root %h --port 9090 --bind 0.0.0.0
+ExecStart=%h/.local/bin/filex --root %h --port 9090 --bind 0.0.0.0
 Restart=always
 RestartSec=5
 WorkingDirectory=%h
+Environment=FILEX_BIN=%h/.local/bin/filex
 
 [Install]
 WantedBy=default.target
