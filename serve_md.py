@@ -29,6 +29,7 @@ CODE_TMPL = load_tmpl("code.html")
 TOOLBAR_TMPL = load_tmpl("toolbar.html")
 CSV_TMPL = load_tmpl("csv.html")
 VIDEO_TMPL = load_tmpl("video.html")
+AUDIO_TMPL = load_tmpl("audio.html")
 
 
 # File extensions rendered with the code.html template (highlight.js + Ace)
@@ -541,6 +542,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         }
 
         is_video = ext in video_exts
+        is_audio = ext in audio_exts
         is_image = ext in img_exts
         is_media = ext in media_mime and ext != ".html"
 
@@ -568,6 +570,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     f'<div class="img-wrap"><img src="{html_mod.escape(media_src)}" alt="{html_mod.escape(title)}" /></div>'
                     '</body></html>'
                 )
+            elif is_audio:
+                page = AUDIO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{audio_src}}", media_src)
             else:
                 page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", media_src)
             self.send_response(200)
@@ -579,7 +583,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # Media raw: serve binary with correct MIME type
         if is_media:
             try:
-                if is_video:
+                if is_video or is_audio:
                     self._serve_file_range(full, media_mime[ext])
                 else:
                     with open(full, "rb") as f:

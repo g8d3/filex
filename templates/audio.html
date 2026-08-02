@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{title}}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/filex.js"></script>
+  <style>
+    .audio-wrap {
+      max-width: 100%;
+      margin: 24px auto;
+      text-align: center;
+    }
+    .audio-wrap audio {
+      width: 100%;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  {{toolbar_html}}
+  <div class="audio-wrap">
+    <audio src="{{audio_src}}" controls autoplay preload="metadata"></audio>
+  </div>
+</body>
+</html>
