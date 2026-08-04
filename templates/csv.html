@@ -149,6 +149,39 @@
 .csv-log-btn.active:hover { background: #2a2a50; }
 .csv-log-count { font-size: 11px; color: #999; }
 
+/* Raw text editor */
+#csv-editor { padding: 16px; }
+#csv-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 60vh;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a1a2e;
+  resize: vertical;
+}
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.editor-actions button {
+  padding: 4px 14px;
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.editor-actions button:hover { background: #2a2a50; }
+#csv-save-status { font-size: 12px; color: #888; }
+
 #csv-table { margin: 0; }
 .tabulator { border: none !important; }
 .tabulator .tabulator-header { background: #1a1a2e !important; color: #fff !important; }
@@ -200,6 +233,7 @@
     <label>Calc: <select id="csv-calc"><option value="">None</option><option value="sum">Sum</option><option value="avg">Avg</option><option value="min">Min</option><option value="max">Max</option><option value="count">Count</option></select></label>
     <label>Cols: <select id="csv-cols-per-row"><option value="0">All</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="6">6</option></select></label>
     <label><span id="csv-mode-btn" class="mode-btn" style="cursor:pointer;padding:2px 8px;border:1px solid #bbb;border-radius:3px;font-size:12px;background:#e0e7ff;user-select:none">💻 Local</span></label>
+    <label><span id="csv-view-btn" class="mode-btn" style="cursor:pointer;padding:2px 8px;border:1px solid #bbb;border-radius:3px;font-size:12px;background:#e0e7ff;user-select:none">📝 Text</span></label>
   </div>
   <hr class="csv-sep" />
   <div class="row csv-cols" id="csv-cols"><span class="csv-cols-label">Columns</span></div>
@@ -222,12 +256,20 @@
     <span class="csv-log-count" id="csv-log-count">0 ops</span>
   </div>
 </div>
+<div id="csv-editor" style="display:none">
+  <textarea id="csv-raw-input" spellcheck="false" placeholder="Raw CSV text..."></textarea>
+  <div class="editor-actions">
+    <button id="csv-save-btn">💾 Save</button>
+    <button id="csv-raw-reload">↻ Reload</button>
+    <span class="sql-status" id="csv-save-status"></span>
+  </div>
+</div>
 <div id="csv-table"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.4/dist/js/tabulator.min.js"></script>
 <script src="/static/filex.js"></script>
 <script>
-let table = null, showLog = false, baseSql = 'SELECT * FROM data', logEntries = [], allFields = [], mode = 'server', currentServerPage = 1, serverTotal = 0;
+let table = null, showLog = false, baseSql = 'SELECT * FROM data', logEntries = [], allFields = [], mode = 'server', currentServerPage = 1, serverTotal = 0, viewMode = localStorage.getItem('csv_view') || 'table';
 
 function logEntry(source, message, sql) {
   const t = new Date();
@@ -437,10 +479,55 @@ mode = savedMode;
 document.getElementById('csv-mode-btn').textContent = mode === 'server' ? '☁️ Server' : '💻 Local';
 document.getElementById('csv-mode-btn').style.background = mode === 'server' ? '#fce8e8' : '#e0e7ff';
 
+// --- Raw text editor ---
+async function openTextEditor() {
+  document.getElementById('csv-table').style.display = 'none';
+  document.getElementById('csv-editor').style.display = 'block';
+  const ta = document.getElementById('csv-raw-input');
+  const status = document.getElementById('csv-save-status');
+  status.textContent = '⏳ Loading...';
+  try {
+    const resp = await fetch(window.location.pathname + '?raw=1');
+    ta.value = await resp.text();
+    status.textContent = '';
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+  }
+}
+
+function closeTextEditor() {
+  document.getElementById('csv-editor').style.display = 'none';
+  document.getElementById('csv-table').style.display = 'block';
+  if (!table) initFromSql(baseSql);
+}
+
+async function saveTextEditor() {
+  const ta = document.getElementById('csv-raw-input');
+  const status = document.getElementById('csv-save-status');
+  status.textContent = '⏳ Saving...';
+  const body = new URLSearchParams();
+  body.append('content', ta.value);
+  try {
+    const resp = await fetch(window.location.pathname, { method: 'POST', body: body });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    status.textContent = '✅ Saved';
+    logEntry('CLIENT', 'Saved raw CSV text');
+  } catch (e) {
+    status.textContent = '❌ ' + e.message;
+    logEntry('CLIENT', 'Save failed: ' + e.message);
+  }
+}
+
 // --- Init ---
 (async function() {
   const urlSql = new URLSearchParams(window.location.search).get('sql');
-  await initFromSql(urlSql || 'SELECT * FROM data');
+  if (viewMode === 'text') {
+    document.getElementById('csv-view-btn').textContent = '📊 Table';
+    document.getElementById('csv-view-btn').style.background = '#fce8e8';
+    await openTextEditor();
+  } else {
+    await initFromSql(urlSql || 'SELECT * FROM data');
+  }
   attachEvents();
 })();
 
@@ -496,6 +583,19 @@ document.getElementById('csv-mode-btn').addEventListener('click', function() {
   logEntry(mode === 'server' ? 'SERVER' : 'CLIENT', 'Switched to ' + mode + ' mode');
   if (allFields.length) buildTable(allFields);
 });
+
+// --- View toggle (table / raw text) ---
+document.getElementById('csv-view-btn').addEventListener('click', function() {
+  viewMode = viewMode === 'text' ? 'table' : 'text';
+  localStorage.setItem('csv_view', viewMode);
+  this.textContent = viewMode === 'text' ? '📊 Table' : '📝 Text';
+  this.style.background = viewMode === 'text' ? '#fce8e8' : '#e0e7ff';
+  if (viewMode === 'text') openTextEditor();
+  else closeTextEditor();
+});
+
+document.getElementById('csv-save-btn').addEventListener('click', saveTextEditor);
+document.getElementById('csv-raw-reload').addEventListener('click', openTextEditor);
 
 // Server pagination via custom buttons injected after table build
 function addServerPageNav() {

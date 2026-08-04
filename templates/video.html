@@ -18,12 +18,27 @@
       border-radius: 4px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.15);
     }
+    .media-dl {
+      margin: 12px auto;
+      text-align: center;
+    }
+    .media-dl a {
+      display: inline-block;
+      padding: 8px 20px;
+      background: #1a1a2e;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .media-dl a:hover { background: #2a2a50; }
   </style>
 </head>
 <body>
   {{toolbar_html}}
   <div class="video-wrap">
     <video src="{{video_src}}" controls autoplay></video>
+    <p class="media-dl"><a href="{{video_dl}}">⬇ Descargar video</a></p>
   </div>
 </body>
 </html>

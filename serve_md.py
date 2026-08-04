@@ -267,7 +267,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     root_dir = SCRIPT_DIR  # will be overridden after arg parse
     real_root = SCRIPT_DIR
 
-    def _serve_file_range(self, full, mime):
+    def _serve_file_range(self, full, mime, disposition=None):
         """Serve a file with Range request support for video seeking."""
         file_size = os.path.getsize(full)
         range_header = self.headers.get("Range")
@@ -286,6 +286,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
                 self.send_header("Content-Length", str(length))
                 self.send_header("Accept-Ranges", "bytes")
+                if disposition:
+                    self.send_header("Content-Disposition", disposition)
                 self.end_headers()
 
                 with open(full, "rb") as f:
@@ -298,6 +300,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-type", mime)
         self.send_header("Content-Length", str(file_size))
         self.send_header("Accept-Ranges", "bytes")
+        if disposition:
+            self.send_header("Content-Disposition", disposition)
         self.end_headers()
 
         with open(full, "rb") as f:
@@ -456,6 +460,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if ext == ".csv":
             fmt = qs.get("format", [None])[0]
+            if qs.get("raw", [None])[0]:
+                try:
+                    with open(full, "r", encoding="utf-8", errors="replace") as f:
+                        text = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/csv; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(text.encode("utf-8"))
+                except FileNotFoundError:
+                    self.send_error(404, "File not found")
+                return
             if fmt == "sql":
                 query = qs.get("q", [None])[0]
                 if not query:
@@ -554,6 +569,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
             sep = "&" if parsed.query else "?"
             media_src = self.path + sep + "raw=1"
+            dl_src = self.path + sep + "raw=1&dl=1"
             title = os.path.basename(full)
             if is_image:
                 page = (
@@ -564,16 +580,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     '<link rel="stylesheet" href="/static/style.css" />'
                     '<script src="/static/filex.js"></script>'
                     '<style>.img-wrap{max-width:100%;margin:16px auto;text-align:center}'
-                    '.img-wrap img{max-width:100%;height:auto;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}</style>'
+                    '.img-wrap img{max-width:100%;height:auto;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}'
+                    '.img-dl{margin:12px auto;text-align:center}'
+                    '.img-dl a{display:inline-block;padding:8px 20px;background:#1a1a2e;color:#fff;text-decoration:none;border-radius:4px;font-size:14px}'
+                    '.img-dl a:hover{background:#2a2a50}</style>'
                     '</head><body>'
                     f'{toolbar}'
                     f'<div class="img-wrap"><img src="{html_mod.escape(media_src)}" alt="{html_mod.escape(title)}" /></div>'
+                    f'<p class="img-dl"><a href="{html_mod.escape(dl_src)}">⬇ Descargar imagen</a></p>'
                     '</body></html>'
                 )
             elif is_audio:
-                page = AUDIO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{audio_src}}", media_src)
+                page = AUDIO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{audio_src}}", media_src).replace("{{audio_dl}}", dl_src)
             else:
-                page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", media_src)
+                page = VIDEO_TMPL.replace("{{title}}", title).replace("{{toolbar_html}}", toolbar).replace("{{video_src}}", media_src).replace("{{video_dl}}", dl_src)
             self.send_response(200)
             self.send_header("Content-type", "text/html; charset=utf-8")
             self.end_headers()
@@ -582,15 +602,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         # Media raw: serve binary with correct MIME type
         if is_media:
+            disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
+            cd = f"{disposition}; filename=\"{os.path.basename(full)}\""
             try:
                 if is_video or is_audio:
-                    self._serve_file_range(full, media_mime[ext])
+                    self._serve_file_range(full, media_mime[ext], cd)
                 else:
                     with open(full, "rb") as f:
                         data = f.read()
                     self.send_response(200)
                     self.send_header("Content-type", media_mime[ext])
                     self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Content-Disposition", cd)
                     self.end_headers()
                     self.wfile.write(data)
             except FileNotFoundError:
@@ -599,66 +622,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
-        # Fallback: abrir inline, descargar solo si ?dl=1
-        if qs.get("dl", [None])[0]:
-            try:
-                with open(full, "rb") as f:
-                    data = f.read()
-                self.send_response(200)
-                self.send_header("Content-type", "application/octet-stream")
-                self.send_header("Content-Disposition", f'attachment; filename="{os.path.basename(full)}"')
-                self.end_headers()
-                self.wfile.write(data)
-            except FileNotFoundError:
-                self.send_error(404, "File not found")
-            except Exception as e:
-                self.send_error(500, str(e))
-            return
-
-        # Intentar abrir como texto
+        # Fallback: serve the real file (never render binary as text)
         try:
-            file_size = os.path.getsize(full)
-            MAX_INLINE = 10 * 1024 * 1024  # 10 MB
-            if file_size > MAX_INLINE:
-                page = (
-                    '<!doctype html><html lang="es"><head>'
-                    '<meta charset="utf-8" />'
-                    f'<title>{html_mod.escape(os.path.basename(full))}</title>'
-                    '<link rel="stylesheet" href="/static/style.css" />'
-                    '</head><body>'
-                    f'<p style="margin:24px;font-size:14px">'
-                    f'Archivo demasiado grande ({format_size(file_size)}). '
-                    f'<a href="{self.path}?dl=1">Descargar</a></p>'
-                    '</body></html>'
-                )
-                self.send_response(200)
-                self.send_header("Content-type", "text/html; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(page.encode("utf-8"))
-                return
-            with open(full, "r", encoding="utf-8", errors="replace") as f:
-                text = f.read()
-            html_out = render_code(text, os.path.basename(full).lower(), path, full)
+            with open(full, "rb") as f:
+                data = f.read()
+            disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
             self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Content-type", "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Content-Disposition", f'{disposition}; filename="{os.path.basename(full)}"')
             self.end_headers()
-            self.wfile.write(html_out.encode("utf-8"))
+            self.wfile.write(data)
         except FileNotFoundError:
             self.send_error(404, "File not found")
-        except Exception:
-            # Si falla como texto, servir binario con Content-Disposition inline
-            try:
-                with open(full, "rb") as f:
-                    data = f.read()
-                self.send_response(200)
-                self.send_header("Content-type", "application/octet-stream")
-                self.send_header("Content-Disposition", "inline")
-                self.end_headers()
-                self.wfile.write(data)
-            except FileNotFoundError:
-                self.send_error(404, "File not found")
-            except Exception as e:
-                self.send_error(500, str(e))
+        except Exception as e:
+            self.send_error(500, str(e))
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
