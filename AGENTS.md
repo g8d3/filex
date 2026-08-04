@@ -107,7 +107,8 @@ Corre en `http://localhost:9090/` sirviendo `~/code/`.
    ```bash
    systemctl --user restart filex && sleep 1 && systemctl --user is-active filex
    ```
-5. **Commit y push** (solo si el usuario lo pide explícitamente):
+5. **Commit y push** (siempre obligatorio — el usuario pide subir cada cambio):
    ```bash
    cd ~/code/filex && git add -A && git commit -m "descripción del cambio" && git push
    ```
+   Nota: después de cada cambio al código/templates, además **reconstruir el binario** (`pyinstaller --clean --noconfirm filex.spec`) y copiarlo a `~/.local/bin/filex` (deteniendo el servicio primero), luego `systemctl --user restart filex`.
