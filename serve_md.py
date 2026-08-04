@@ -443,9 +443,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r") as f:
                     text = f.read()
-                if qs.get("raw", [None])[0]:
+                if qs.get("raw", [None])[0] or qs.get("dl", [None])[0]:
+                    disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
                     self.send_response(200)
                     self.send_header("Content-type", "text/markdown; charset=utf-8")
+                    self.send_header("Content-Disposition", f'{disposition}; filename="{os.path.basename(full)}"')
                     self.end_headers()
                     self.wfile.write(text.encode("utf-8"))
                     return
@@ -460,12 +462,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         if ext == ".csv":
             fmt = qs.get("format", [None])[0]
-            if qs.get("raw", [None])[0]:
+            if qs.get("raw", [None])[0] or qs.get("dl", [None])[0]:
                 try:
                     with open(full, "r", encoding="utf-8", errors="replace") as f:
                         text = f.read()
+                    disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
                     self.send_response(200)
                     self.send_header("Content-type", "text/csv; charset=utf-8")
+                    self.send_header("Content-Disposition", f'{disposition}; filename="{os.path.basename(full)}"')
                     self.end_headers()
                     self.wfile.write(text.encode("utf-8"))
                 except FileNotFoundError:
@@ -521,14 +525,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 with open(full, "r", encoding="utf-8", errors="replace") as f:
                     text = f.read()
-                if qs.get("raw", [None])[0]:
+                if qs.get("raw", [None])[0] or qs.get("dl", [None])[0]:
                     mime = "text/plain; charset=utf-8"
                     if text_key == ".json":
                         mime = "application/json; charset=utf-8"
                     elif text_key == ".csv":
                         mime = "text/csv; charset=utf-8"
+                    disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
                     self.send_response(200)
                     self.send_header("Content-type", mime)
+                    self.send_header("Content-Disposition", f'{disposition}; filename="{os.path.basename(full)}"')
                     self.end_headers()
                     self.wfile.write(text.encode("utf-8"))
                     return
