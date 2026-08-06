@@ -28,8 +28,9 @@ El handler clasifica cada request en este orden:
 3. **`.md`** → renderiza con `render_md()` (marked.js + editor texto plano).
 4. **`.csv`** → renderiza con `render_csv()` (PapaParse → tabla HTML).
 5. **`text_key in TEXT_EXTENSIONS`** → renderiza con `render_code()` (highlight.js + Ace editor).
-6. **Extension multimedia** → sirve binario con MIME type (png, mp4, etc.).
-7. **Fallback** → `application/octet-stream` (descarga).
+6. **`.html` / `.htm`** → página wrapper con la toolbar de filex (breadcrumb, descarga, borrar) + `<iframe src="?raw=1">` que renderiza el HTML. `?raw=1` sirve la página cruda (la usa el iframe) y `?dl=1` fuerza descarga. Sin el wrapper los `.html` caían al fallback `octet-stream` y el browser los descargaba.
+7. **Extension multimedia** → sirve binario con MIME type (png, mp4, etc.).
+8. **Fallback** → `application/octet-stream` (descarga).
 
 ## CSV rendering
 

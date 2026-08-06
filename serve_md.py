@@ -549,6 +549,65 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(500, str(e))
             return
 
+        # HTML files → render in the browser inside a wrapper that keeps the
+        # filex navigation bar. Without this branch they hit the fallback and
+        # are served as application/octet-stream (browser downloads them).
+        #   default  → wrapper page: filex toolbar + <iframe src="?raw=1">
+        #   ?raw=1   → the raw HTML page itself (loaded inside the iframe)
+        #   ?dl=1    → force download
+        if ext in {".html", ".htm"}:
+            try:
+                if not qs.get("raw", [None])[0] and not qs.get("dl", [None])[0]:
+                    title = os.path.basename(full)
+                    bc = breadcrumb_code(path, full)
+                    toolbar = TOOLBAR_TMPL.replace("{{breadcrumb}}", bc).replace("{{root_name}}", ROOT_NAME)
+                    sep = "&" if parsed.query else "?"
+                    html_src = self.path + sep + "raw=1"
+                    page = (
+                        '<!doctype html><html lang="es"><head>'
+                        '<meta charset="utf-8" />'
+                        '<meta name="viewport" content="width=device-width,initial-scale=1" />'
+                        f'<title>{html_mod.escape(title)}</title>'
+                        '<link rel="stylesheet" href="/static/style.css" />'
+                        '<script src="/static/filex.js"></script>'
+                        '<style>'
+                        'html,body{margin:0;padding:0;height:100%}'
+                        'body{display:flex;flex-direction:column;padding-bottom:0}'
+                        '.frame-wrap{flex:1;min-height:0;overflow:hidden}'
+                        '.frame-wrap iframe{display:block;width:100%;height:100%;border:0}'
+                        '.bottom-bar{position:static}'
+                        '.toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}'
+                        '.toolbar-sep{color:#ddd;margin:0 2px}'
+                        '</style>'
+                        '</head><body>'
+                        '<div class="frame-wrap">'
+                        f'<iframe class="html-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals" '
+                        f'src="{html_mod.escape(html_src)}" title="{html_mod.escape(title)}"></iframe>'
+                        '</div>'
+                        f'{toolbar}'
+                        '<script>showFileActions();</script>'
+                        '</body></html>'
+                    )
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(page.encode("utf-8"))
+                else:
+                    disposition = "attachment" if qs.get("dl", [None])[0] else "inline"
+                    with open(full, "rb") as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.send_header("Content-Disposition", f'{disposition}; filename="{os.path.basename(full)}"')
+                    self.end_headers()
+                    self.wfile.write(data)
+            except FileNotFoundError:
+                self.send_error(404, "File not found")
+            except Exception as e:
+                self.send_error(500, str(e))
+            return
+
         # Image/audio/video MIME mapping
         img_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"}
         audio_exts = {".mp3", ".wav", ".flac", ".opus"}
